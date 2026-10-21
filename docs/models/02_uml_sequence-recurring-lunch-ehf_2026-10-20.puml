@@ -1,0 +1,76 @@
+@startuml
+' Sequence: corporate customer places a recurring lunch order and receives a monthly EHF invoice via Fiken
+' Stories: US-16, US-17, US-10, US-11, US-23, US-24, US-25
+title Corporate customer places a recurring lunch order and receives a monthly EHF invoice via Fiken
+skinparam defaultFontName Arial
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+skinparam responseMessageBelowArrow true
+autonumber
+
+actor "henrik : CompanyUser" as U
+boundary "web : OrderingUI" as UI
+participant "acct : CompanyAccount" as ACC
+participant "tpl : Order" as TPL
+participant "so : StandingOrder" as SO
+participant "day : CapacityDay" as DAY
+participant "o : Order" as O
+control "inv : InvoicingService" as SVC
+participant "invoice : Invoice" as INV
+participant "pay : Payment" as PAY
+participant "fiken : FikenAPI" as FK <<external>>
+actor "Scheduler" as T
+actor "Fjordtek finance" as FIN
+
+== Set up the standing order (US-16, US-17) ==
+U -> UI : log in on company account
+UI -> ACC : verify user belongs to account (role ORDERER/ADMIN)
+ACC --> UI : ok
+U -> UI : new standing order: Tuesdays, 12 guests,\n3 vegetarian, cost centre "4410"
+UI -> TPL ** : create template (OrderLines, GuestGroupDiet 3 x vegetarian,\ncostCentre)
+UI -> SO ** : create(weekday = TUE, startDate, leadDays = 7, template = tpl)
+UI --> U : standing order saved
+
+== Every week (US-17, US-10) ==
+loop for each Tuesday in the period
+  T -> SO : generate next occurrence (eventDate - leadDays)
+  SO -> DAY : covers available for eventDate? (12)
+  alt bookedCovers + 12 <= maxCovers
+    SO -> O ** : create copy of tpl (status = CONFIRMED,\nno deposit for company accounts)
+    O -> DAY : add 12 covers
+    O --> U : confirmation e-mail with order number
+  else capacity reached
+    SO --> UI : flag occurrence for coordinator review
+  end
+  opt change before changeDeadline (10:00 day before) (US-11)
+    U -> UI : change guests 12 -> 15
+    UI -> O : update guestCount, OrderLines
+    O -> DAY : add 3 covers
+  end
+  note over O : kitchen prepares and driver delivers:\nstatus = DELIVERED
+end
+
+== Month end: one EHF invoice (US-23, US-24) ==
+T -> SVC : run monthly invoicing (month)
+SVC -> ACC : monthlyInvoicing? ehfAddress
+ACC --> SVC : true, PEPPOL address
+SVC -> O : find DELIVERED orders of acct in month
+O --> SVC : orders with costCentre / poNumber
+SVC -> INV ** : create(kind = EHF, periodStart, periodEnd, totalNok)
+SVC -> O : link to invoice, status = INVOICED
+SVC -> FK : POST invoice (one line per order,\ncost centre on each line)
+alt Fiken accepts
+  FK --> SVC : fikenInvoiceId
+  SVC -> INV : store fikenInvoiceId
+  FK -> FIN : EHF invoice via PEPPOL
+else Fiken API error
+  FK --> SVC : error
+  SVC --> UI : show error on invoice, retry later
+end
+
+== Payment (US-25) ==
+FIN -> FK : bank transfer
+FK -> SVC : payment registered (webhook / poll)
+SVC -> PAY ** : create(kind = INVOICE, amountNok, paidAt)
+SVC -> INV : paidAt = now (no reminder sent)
+@enduml

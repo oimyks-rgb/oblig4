@@ -1,0 +1,231 @@
+@startuml
+' Domain class diagram - Ekte Mat Online (Must + Should stories, backlog v1). No methods.
+title Ekte Mat Online - Domain model (Must + Should, backlog v1)
+skinparam defaultFontName Arial
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam nodesep 70
+skinparam ranksep 70
+skinparam class {
+  BackgroundColor #F5FAF7
+  BorderColor #2F5D50
+  ArrowColor #2F5D50
+}
+hide methods
+hide empty members
+
+' ---------- enumerations ----------
+enum Language {
+  NO
+  EN
+}
+enum OrderStatus {
+  REQUESTED
+  QUOTED
+  AWAITING_DEPOSIT
+  CONFIRMED
+  NUMBERS_CONFIRMED
+  IN_PREPARATION
+  DELIVERED
+  INVOICED
+  CANCELLED
+}
+enum EventType {
+  LUNCH
+  MEETING
+  PARTY
+  WEDDING
+  OTHER
+}
+enum Channel {
+  WEB
+  PHONE
+  EMAIL
+}
+enum StaffRole {
+  COORDINATOR
+  KITCHEN
+  HEAD_CHEF
+  OWNER
+}
+enum CompanyRole {
+  ADMIN
+  ORDERER
+}
+enum InvoiceKind {
+  VIPPS
+  EHF
+}
+enum PaymentKind {
+  DEPOSIT
+  INVOICE
+}
+enum RequestKind {
+  ACCESS
+  DELETION
+}
+
+' ---------- customers ----------
+abstract class Customer {
+  customerId : Integer {id}
+  name : String
+  email : String {unique}
+  phone : String [0..1]
+  language : Language
+  createdAt : DateTime
+  deletedAt : DateTime [0..1]
+}
+class PrivateCustomer
+class CompanyAccount {
+  orgNumber : String {unique}
+  ehfAddress : String
+  monthlyInvoicing : Boolean = true
+}
+class CompanyUser {
+  userId : Integer {id}
+  name : String
+  email : String {unique}
+  role : CompanyRole
+  active : Boolean
+}
+Customer <|-- PrivateCustomer
+Customer <|-- CompanyAccount
+CompanyAccount "1" *-- "1..*" CompanyUser : has >
+
+class DataSubjectRequest {
+  requestId : Integer {id}
+  kind : RequestKind
+  receivedAt : DateTime
+  completedAt : DateTime [0..1]
+}
+Customer "1" -- "0..*" DataSubjectRequest : submits >
+
+' ---------- orders ----------
+class Order {
+  orderNumber : String {id}
+  eventDate : Date
+  eventType : EventType
+  guestCount : Integer
+  deliveryAddress : String
+  channel : Channel
+  status : OrderStatus
+  costCentre : String [0..1]
+  poNumber : String [0..1]
+  changeDeadline : DateTime
+  totalNok : Decimal
+  allergiesConfirmedAt : DateTime [0..1]
+  numbersConfirmedAt : DateTime [0..1]
+  createdAt : DateTime
+}
+class OrderLine {
+  quantity : Integer
+  unitPriceNok : Decimal
+}
+class GuestGroupDiet {
+  guestCount : Integer
+  diet : String
+  note : String [0..1]
+}
+note bottom of GuestGroupDiet : No guest names (GDPR art. 9, US-36)
+
+class StandingOrder {
+  standingOrderId : Integer {id}
+  weekday : Integer
+  startDate : Date
+  endDate : Date [0..1]
+  leadDays : Integer
+  active : Boolean
+}
+class CapacityDay {
+  date : Date {id}
+  maxCovers : Integer
+  /bookedCovers : Integer
+}
+note bottom of CapacityDay : maxCovers = 400, or 250 with a\nserved wedding dinner (US-10)
+
+class StaffUser {
+  staffId : Integer {id}
+  name : String
+  role : StaffRole
+  pinHash : String [0..1]
+}
+
+Customer "1" -- "0..*" Order : places >
+CompanyUser "0..1" -- "0..*" Order : orderedBy <
+StaffUser "0..1" -- "0..*" Order : registeredBy <
+StaffUser "0..1" -- "0..*" Order : allergiesConfirmedBy <
+Order "1" *-- "1..*" OrderLine : contains >
+Order "1" *-- "0..*" GuestGroupDiet : declares >
+Order "0..*" -- "1" CapacityDay : uses >
+Order "0..*" -- "0..1" Order : copiedFrom >
+CompanyAccount "1" -- "0..*" StandingOrder : has >
+StandingOrder "0..*" -- "1" Order : template >
+StandingOrder "0..1" -- "0..*" Order : generatedBy <
+
+' ---------- menus ----------
+class Menu {
+  menuId : Integer {id}
+  name : String
+  season : String
+  validFrom : Date
+  validTo : Date [0..1]
+  published : Boolean
+}
+class Dish {
+  dishId : Integer {id}
+  nameNo : String
+  nameEn : String
+  descriptionNo : String
+  descriptionEn : String
+  pricePerPersonNok : Decimal
+  glutenFree : Boolean
+}
+class Allergen {
+  code : String {id}
+  nameNo : String
+  nameEn : String
+}
+class Ingredient {
+  ingredientId : Integer {id}
+  name : String
+}
+class RecipeLine {
+  kgPerPortion : Decimal
+}
+class Supplier {
+  supplierId : Integer {id}
+  name : String
+  origin : String
+}
+Menu "0..*" -- "1..*" Dish : offers >
+Dish "0..*" -- "0..*" Allergen : contains >
+Dish "0..*" -- "0..*" Ingredient
+(Dish, Ingredient) .. RecipeLine
+Ingredient "0..*" -- "0..1" Supplier : suppliedBy >
+OrderLine "0..*" -- "1" Dish : of >
+
+' ---------- invoicing ----------
+class Invoice {
+  invoiceNumber : String {id}
+  kind : InvoiceKind
+  fikenInvoiceId : String [0..1] {unique}
+  periodStart : Date
+  periodEnd : Date
+  issueDate : Date
+  dueDate : Date
+  totalNok : Decimal
+  paidAt : DateTime [0..1]
+}
+class Payment {
+  paymentId : Integer {id}
+  kind : PaymentKind
+  amountNok : Decimal
+  vippsReference : String [0..1]
+  paidAt : DateTime
+}
+Customer "1" -- "0..*" Invoice : billedTo <
+Invoice "0..1" -- "1..*" Order : covers >
+Order "0..1" -- "0..*" Payment : depositFor <
+Invoice "0..1" -- "0..*" Payment : settles <
+note bottom of Payment : {xor depositFor, settles}\na payment is either a wedding deposit for an Order\nor settles an Invoice
+@enduml

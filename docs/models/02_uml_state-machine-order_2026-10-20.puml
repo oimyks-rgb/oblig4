@@ -1,0 +1,47 @@
+@startuml
+' State machine for Order (status attribute OrderStatus in the class diagram)
+' Stories: US-02, US-03, US-06, US-10, US-11, US-12, US-13, US-22, US-23, US-24, US-26, US-27
+title Order - state machine
+skinparam defaultFontName Arial
+skinparam shadowing false
+skinparam state {
+  BackgroundColor #F5FAF7
+  BorderColor #2F5D50
+}
+
+[*] --> Requested : booking request submitted /\nsend acknowledgement (US-02, US-03)
+
+Requested --> Quoted : coordinator approves quote\n[within capacity or override] / send quote (US-06, US-10)
+Requested --> Cancelled : customer withdraws\nor no date agreed
+
+Quoted --> AwaitingDeposit : customer accepts\n[eventType = WEDDING] /\nsend 30 % Vipps request (US-22)
+Quoted --> Confirmed : customer accepts\n[eventType <> WEDDING] / add covers
+Quoted --> Cancelled : after(7 days) [no reply]
+
+AwaitingDeposit --> Confirmed : deposit paid / add covers
+AwaitingDeposit --> Cancelled : after(7 days) [deposit unpaid]
+
+state Confirmed {
+  [*] --> AllergiesPending
+  AllergiesPending --> AllergiesConfirmed : kitchen confirms allergies (US-27)
+  AllergiesConfirmed --> AllergiesPending : allergy added or changed (US-11)
+}
+Confirmed : change guests [now < changeDeadline] /\nupdate covers and kitchen view (US-11)
+Confirmed : entry / show on kitchen screen (US-26)
+
+Confirmed --> NumbersConfirmed : customer confirms final numbers\n(after reminder at eventDate - 7 days, US-12)
+Confirmed --> Cancelled : customer cancels / apply cancellation terms (US-13)
+NumbersConfirmed --> Cancelled : customer cancels / apply cancellation terms (US-13)
+
+NumbersConfirmed --> InPreparation : event day starts\n[allergies confirmed]
+InPreparation --> Delivered : food delivered
+Delivered --> Invoiced : invoice created in Fiken /\nVipps (private) or monthly EHF (company) (US-23, US-24)
+
+Invoiced --> [*]
+Cancelled --> [*]
+
+note right of Cancelled
+  A cancellation fee, if any, is invoiced
+  separately. The terms are open question C08.
+end note
+@enduml

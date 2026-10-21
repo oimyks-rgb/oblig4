@@ -1,0 +1,30 @@
+# Secrets (API keys for Claude / image services)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Flask / local data
+instance/
+app/static/uploads/
+
+# Node (if a JS front end is added)
+node_modules/
+
+# Editors and OS
+.DS_Store
+.vscode/
+.idea/
+~$*
+
+# Claude Code local settings
+.claude/settings.local.json

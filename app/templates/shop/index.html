@@ -1,8 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Catering menu</h1>
+{% if available %}
+<nav class="event-nav" aria-label="Kinds of event">
+  <a href="{{ url_for('shop.index') }}" {% if not selected %}aria-current="page"{% endif %}>All events</a>
+  {% for c in available %}
+    <a href="{{ url_for('shop.index', event=c.value) }}" {% if selected == c %}aria-current="page"{% endif %}>{{ c.label }}</a>
+  {% endfor %}
+</nav>
+{% endif %}
 {% for category, items in sections %}
-  <section class="category">
+  <section class="category" id="event-{{ category.value }}">
     <h2>{{ category.label }}</h2>
     <div class="cards">
       {% for item in items %}
@@ -12,9 +20,11 @@
             <h3>{{ item.name }}</h3>
             <p>{{ item.description }}</p>
             <p class="price">{{ item.price_nok | nok }} <span>per portion</span></p>
-            <p class="min">Minimum order: {{ item.min_order_qty }}</p>
+            <p class="min">Minimum order: {{ item.min_order_qty }} {{ 'portion' if item.min_order_qty == 1 else 'portions' }}</p>
             {% if item.allergens %}
               <p class="allergens">Contains: {{ item.allergens | map(attribute='label') | join(', ') }}</p>
+            {% elif item.no_allergens %}
+              <p class="allergens">No allergens</p>
             {% endif %}
             {% if item.dietary_labels %}
               <p class="tags">{% for d in item.dietary_labels %}<span class="tag">{{ d.label }}</span>{% endfor %}</p>
@@ -33,6 +43,6 @@
     </div>
   </section>
 {% else %}
-  <p>No food items are published yet.</p>
+  <p>{{ 'Nothing on the menu for this kind of event yet.' if selected else 'No food items are published yet.' }}</p>
 {% endfor %}
 {% endblock %}

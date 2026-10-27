@@ -210,3 +210,8 @@ input.qty.has-error { border-color: #c62828; }
 .inline-form label { display: grid; gap: 0.25rem; }
 .question details { margin-top: 0.5rem; }
 .question summary { cursor: pointer; color: var(--green); }
+
+/* ---------- menu by event (C1) ---------- */
+.event-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1rem; }
+.event-nav a { padding: 0.3rem 0.8rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--green); text-decoration: none; font-size: 0.9rem; }
+.event-nav a[aria-current=page] { background: var(--green); border-color: var(--green); color: #fff; }

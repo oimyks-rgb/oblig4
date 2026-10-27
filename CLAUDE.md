@@ -54,6 +54,7 @@ Layer rules:
 - Views get plain data from controllers and contain no business logic.
 - Validation and business rules live in the model layer (pattern: `models/food_items.py` returns the object plus a field -> message dict). Controllers only pass `request.form` in and re-render with the errors (status 400).
 - Pictures go through `repos().images` (an `ImageStore`, files in `instance/images/`), and AI pictures through `image_generator()` (None when `IMAGE_GENERATOR` is empty). New pictures are always saved as a draft and previewed before they replace the current one (A2).
+- The menu (C1) is `shop.index`: cards grouped by `EventCategory`, filtered with `?event=<code>`. Every published item has at least one event category (an A1 rule), so it always shows.
 - The cart is `session["cart"]` (`{food_item_id: quantity}`); login and registration keep it. The minimum order applies to the total quantity of an item.
 - Orders copy the item name and price into each line. Ordered food items can't be deleted (`is_ordered`). Guest groups hold a count and a note, never guest names (US-36).
 - Order status changes always go through `check_transition()` (see `docs/models/order-status.md`). Payment status can be set freely.

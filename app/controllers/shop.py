@@ -12,12 +12,29 @@ bp = Blueprint("shop", __name__)
 
 @bp.route("/")
 def index():
+    """The menu (C1): published food items as cards, grouped by kind of event.
+
+    ?event=<code> shows one kind of event only, e.g. /?event=wedding.
+    """
     items = repos().food_items.list(published_only=True)
-    sections = [
-        (category, [i for i in items if category in i.event_categories])
-        for category in EventCategory
-    ]
-    return render_template("shop/index.html", sections=[s for s in sections if s[1]])
+    available = [c for c in EventCategory if any(c in i.event_categories for i in items)]
+
+    selected = None
+    raw = request.args.get("event", "").strip()
+    if raw:
+        try:
+            selected = EventCategory(raw)
+        except ValueError:
+            flash("Unknown event type; showing the whole menu.", "error")
+
+    shown = [selected] if selected else available
+    sections = [(c, [i for i in items if c in i.event_categories]) for c in shown]
+    return render_template(
+        "shop/index.html",
+        sections=[s for s in sections if s[1]],
+        available=available,
+        selected=selected,
+    )
 
 
 @bp.route("/images/<name>")

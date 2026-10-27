@@ -60,7 +60,7 @@ flask --app app run --debug --port 5001
 
 Open <http://localhost:5001>. Port 5000 is taken by AirPlay on macOS.
 
-Customers can register at `/account/register`, fill a cart from the menu and place an order at `/order/checkout`. No payment is involved. Under My orders (`/account/`) they see their orders with status and payment status, and they can ask questions about each order.
+The menu at `/` shows published food items as cards grouped by kind of event, and `/?event=wedding` (or any other event code) shows one kind only. Customers can register at `/account/register`, fill a cart from the menu and place an order at `/order/checkout`. No payment is involved. Under My orders (`/account/`) they see their orders with status and payment status, and they can ask questions about each order.
 
 The seed creates a demo order `EM-DEMO01` for `kari.nordmann@ektemat.test` with an answered question.
 

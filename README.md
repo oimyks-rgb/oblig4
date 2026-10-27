@@ -39,7 +39,9 @@ This creates constraints, allergen and event-category nodes, 11 food items, an a
 flask --app app run --debug --port 5001
 ```
 
-Open <http://localhost:5001>. The admin panel is at `/admin/`. Port 5000 is taken by AirPlay on macOS.
+Open <http://localhost:5001>. Port 5000 is taken by AirPlay on macOS.
+
+The admin panel is at `/admin/`. Log in as `admin@ektemat.test` with the `SEED_ADMIN_PASSWORD` from `.env`. The test customers use `SEED_CUSTOMER_PASSWORD`.
 
 ## Test
 

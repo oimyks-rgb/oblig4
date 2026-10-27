@@ -103,6 +103,8 @@ class FoodItem:
     dietary_labels: list[DietaryLabel] = field(default_factory=list)
     published: bool = False
     image_filename: Optional[str] = None
+    # Staff confirmed the item contains none of the 14 allergens (US-33)
+    no_allergens: bool = False
 
 
 @dataclass

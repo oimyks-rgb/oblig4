@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% set title = 'Add food item' if is_new else 'Edit ' ~ item.name %}
+{% block title %}{{ title }} · Admin · Ekte Mat Online{% endblock %}
+{% block content %}
+{% with active='food_items' %}{% include "admin/_nav.html" %}{% endwith %}
+<h1>{{ title }}</h1>
+{% if errors %}<p class="flash flash-error" role="alert">Please fix the fields marked below.</p>{% endif %}
+
+{% macro value(field, default) -%}
+  {{ form.get(field, '') if form else default }}
+{%- endmacro %}
+
+<form method="post" class="form" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <label class="{% if errors.name %}has-error{% endif %}">Name
+    <input type="text" name="name" maxlength="100" required value="{{ value('name', item.name) }}">
+    {% if errors.name %}<span class="error">{{ errors.name }}</span>{% endif %}
+  </label>
+
+  <label class="{% if errors.description %}has-error{% endif %}">Description
+    <textarea name="description" rows="3" maxlength="1000">{{ value('description', item.description) }}</textarea>
+    {% if errors.description %}<span class="error">{{ errors.description }}</span>{% endif %}
+  </label>
+
+  <div class="row">
+    <label class="{% if errors.price_nok %}has-error{% endif %}">Price per portion (NOK)
+      <input type="number" name="price_nok" min="1" step="1" inputmode="numeric" required
+             value="{{ value('price_nok', item.price_nok or '') }}">
+      {% if errors.price_nok %}<span class="error">{{ errors.price_nok }}</span>{% endif %}
+    </label>
+    <label class="{% if errors.min_order_qty %}has-error{% endif %}">Minimum order (portions)
+      <input type="number" name="min_order_qty" min="1" step="1" inputmode="numeric" required
+             value="{{ value('min_order_qty', item.min_order_qty or '') }}">
+      {% if errors.min_order_qty %}<span class="error">{{ errors.min_order_qty }}</span>{% endif %}
+    </label>
+  </div>
+
+  {% with name='event_categories', legend='Event categories', options=categories,
+          selected=item.event_categories | map(attribute='value') | list %}
+    {% include "admin/food_items/_checkboxes.html" %}
+  {% endwith %}
+
+  {% with name='allergens', legend='Allergens', options=allergens,
+          selected=item.allergens | map(attribute='value') | list %}
+    {% include "admin/food_items/_checkboxes.html" %}
+  {% endwith %}
+  <label class="check standalone"><input type="checkbox" name="no_allergens" {% if item.no_allergens %}checked{% endif %}>
+    Contains none of the 14 allergens</label>
+
+  {% with name='dietary_labels', legend='Dietary labels', options=dietary_labels,
+          selected=item.dietary_labels | map(attribute='value') | list %}
+    {% include "admin/food_items/_checkboxes.html" %}
+  {% endwith %}
+
+  <label class="check standalone"><input type="checkbox" name="published" {% if item.published %}checked{% endif %}>
+    Published (visible to customers)</label>
+
+  <div class="form-actions">
+    <button class="button" type="submit">{{ 'Add food item' if is_new else 'Save changes' }}</button>
+    <a href="{{ url_for('admin.food_items') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

@@ -29,7 +29,8 @@ def check_food_item_repository(repo, prefix=""):
     assert b.id not in ids(repo.list(category=EventCategory.BIRTHDAY))
 
     a.price_nok = 200
-    a.allergens = [Allergen.EGGS]
+    a.allergens = []
+    a.no_allergens = True
     a.event_categories = [EventCategory.WEDDING]
     repo.update(a)
     assert repo.get(a.id) == a

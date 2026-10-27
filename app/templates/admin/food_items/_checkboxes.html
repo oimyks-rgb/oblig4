@@ -1,0 +1,9 @@
+{# Checkbox group. Needs: name, options (enum members), selected (list of values), errors #}
+<fieldset class="checks{% if errors.get(name) %} has-error{% endif %}">
+  <legend>{{ legend }}</legend>
+  {% for option in options %}
+    <label class="check"><input type="checkbox" name="{{ name }}" value="{{ option.value }}"
+      {% if option.value in selected %}checked{% endif %}> {{ option.label }}</label>
+  {% endfor %}
+  {% if errors.get(name) %}<p class="error">{{ errors[name] }}</p>{% endif %}
+</fieldset>

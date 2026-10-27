@@ -39,6 +39,7 @@ def _food_item_params(item: FoodItem) -> dict:
             "minOrderQty": item.min_order_qty,
             "dietaryLabels": [d.value for d in item.dietary_labels],
             "published": item.published,
+            "noAllergens": item.no_allergens,
             "imageFilename": item.image_filename,
         },
         "allergens": [a.value for a in item.allergens],
@@ -63,6 +64,7 @@ def _to_food_item(record) -> FoodItem:
         allergens=_in_enum_order(Allergen, record["allergens"]),
         dietary_labels=[DietaryLabel(d) for d in f.get("dietaryLabels", [])],
         published=f.get("published", False),
+        no_allergens=f.get("noAllergens", False),
         image_filename=f.get("imageFilename"),
     )
 

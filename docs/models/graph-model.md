@@ -4,7 +4,7 @@ Current version, as implemented in `app/models/neo4j_repos.py`. Extend it as fea
 
 ```mermaid
 graph LR
-  F["FoodItem<br/>id, name, description,<br/>priceNok, minOrderQty,<br/>dietaryLabels[], published,<br/>imageFilename"]
+  F["FoodItem<br/>id, name, description,<br/>priceNok, minOrderQty,<br/>dietaryLabels[], published,<br/>noAllergens, imageFilename"]
   A["Allergen<br/>code, name"]
   C["EventCategory<br/>code, name"]
   U["User<br/>id, email, name,<br/>passwordHash, role"]
@@ -27,6 +27,7 @@ Created by `ensure_schema()` in `app/models/neo4j_db.py`:
 | `FoodItem.allergens` | `CONTAINS` relationships to `:Allergen` nodes (the 14 EU allergens) |
 | `FoodItem.event_categories` | `SUITS` relationships to `:EventCategory` nodes |
 | `FoodItem.dietary_labels` | List property on the node |
+| `FoodItem.no_allergens` | `noAllergens` property: staff confirmed the item has none of the 14 allergens (US-33) |
 | `User` (customers and admins) | `:User` node, where `role` is `customer` or `admin` |
 
 ## Why allergens and event categories are nodes

@@ -2,6 +2,7 @@
 
 from dotenv import load_dotenv
 from flask import Flask
+from flask_wtf.csrf import CSRFProtect
 
 from .config import Config
 from .models.repositories import Repositories
@@ -13,6 +14,11 @@ def create_app(config=None) -> Flask:
     app.config.from_object(config or Config())
 
     app.extensions["repos"] = _build_repositories(app)
+    CSRFProtect(app)
+
+    from .controllers import auth
+
+    auth.init_app(app)
 
     from .controllers.account import bp as account_bp
     from .controllers.admin import bp as admin_bp

@@ -34,7 +34,14 @@
     // Forms with data-confirm ask before submitting (e.g. delete)
     document.addEventListener("submit", (event) => {
       const message = event.target.dataset.confirm;
-      if (message && !confirm(message)) event.preventDefault();
+      if (message && !confirm(message)) { event.preventDefault(); return; }
+      // Forms with data-busy show a message and can't be sent twice (e.g. AI generation)
+      const busy = event.target.dataset.busy;
+      if (busy) {
+        event.target.querySelectorAll("button").forEach((b) => (b.disabled = true));
+        event.target.insertAdjacentHTML("beforeend", '<p class="hint" role="status"></p>');
+        event.target.lastElementChild.textContent = busy;
+      }
     });
   </script>
 </body>

@@ -1,10 +1,12 @@
 """In-memory repositories, used by the tests (REPOSITORY_BACKEND = "memory")."""
 
+import time
 from copy import deepcopy
 from dataclasses import replace
 from typing import Optional
 
 from .domain import EventCategory, FoodItem, User
+from .images import ImageStore
 from .repositories import FoodItemRepository, Repositories, UserRepository
 
 
@@ -63,5 +65,34 @@ class MemoryUserRepository(UserRepository):
         return deepcopy(user)
 
 
-def memory_repositories() -> Repositories:
-    return Repositories(food_items=MemoryFoodItemRepository(), users=MemoryUserRepository())
+class MemoryImageStore(ImageStore):
+    def __init__(self):
+        self._files: dict[str, tuple[bytes, float]] = {}
+
+    def _write(self, name, data):
+        self._files[name] = (data, time.time())
+
+    def _read(self, name):
+        entry = self._files.get(name)
+        return entry[0] if entry else None
+
+    def _exists(self, name):
+        return name in self._files
+
+    def _delete(self, name):
+        self._files.pop(name, None)
+
+    def cleanup_drafts(self, max_age):
+        cutoff = time.time() - max_age.total_seconds()
+        old = [n for n, (_, t) in self._files.items() if n.startswith("draft-") and t < cutoff]
+        for name in old:
+            del self._files[name]
+        return len(old)
+
+
+def memory_repositories(images: ImageStore | None = None) -> Repositories:
+    return Repositories(
+        food_items=MemoryFoodItemRepository(),
+        users=MemoryUserRepository(),
+        images=images or MemoryImageStore(),
+    )

@@ -7,8 +7,7 @@
     <div class="cards">
       {% for item in items %}
         <article class="card">
-          <img src="{{ url_for('static', filename=('uploads/' ~ item.image_filename) if item.image_filename else 'img/placeholder.svg') }}"
-               alt="{{ item.name }}">
+          {% with name=item.image_filename, alt=item.name, cls='' %}{% include "admin/food_items/_picture.html" %}{% endwith %}
           <div class="card-body">
             <h3>{{ item.name }}</h3>
             <p>{{ item.description }}</p>

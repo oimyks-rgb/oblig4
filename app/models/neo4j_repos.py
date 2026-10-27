@@ -11,6 +11,7 @@ from typing import Optional
 from neo4j import Driver
 
 from .domain import Allergen, DietaryLabel, EventCategory, FoodItem, Role, User
+from .images import ImageStore
 from .repositories import FoodItemRepository, Repositories, UserRepository
 
 _FOOD_ITEM_RETURN = """
@@ -173,7 +174,7 @@ class Neo4jUserRepository(UserRepository):
         return self.get(user.id)
 
 
-def neo4j_repositories(driver: Driver) -> Repositories:
+def neo4j_repositories(driver: Driver, images: ImageStore) -> Repositories:
     return Repositories(
-        food_items=Neo4jFoodItemRepository(driver), users=Neo4jUserRepository(driver)
+        food_items=Neo4jFoodItemRepository(driver), users=Neo4jUserRepository(driver), images=images
     )

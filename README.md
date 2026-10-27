@@ -25,13 +25,32 @@ Fill in `.env`:
 
 Never commit `.env`.
 
+## Pictures (A2)
+
+Staff can upload a picture for each food item, or have Gemini create or modify one from a written instruction. Either way, the admin previews the new picture before saving it.
+
+- Set `IMAGE_GENERATOR=gemini` and `GEMINI_API_KEY` in `.env` to use Gemini. Image models have no free tier and cost about $0.034 per picture.
+- `IMAGE_GENERATOR=fake` draws simple test pictures locally, for free.
+- Leave it empty for upload only.
+
+Sample illustrations for the seed items live in `seed_images/` and are committed to git. To make them:
+
+```bash
+python generate_images.py --only seed-falafel   # try the style on one item
+python generate_images.py                       # the rest
+```
+
+`python seed.py` copies them into your local picture folder.
+
+Pictures are stored in `instance/images/` on each computer and are not in git. A picture uploaded on one computer shows as a placeholder on the others. Seed pictures work everywhere, because every machine gives them the same name.
+
 ## Seed
 
 ```bash
 python seed.py
 ```
 
-This creates constraints, allergen and event-category nodes, 11 food items, an admin (`admin@ektemat.test`) and two customers (`kari.nordmann@ektemat.test`, `ola.hansen@ektemat.test`). It is safe to rerun. `python seed.py --reset` deletes everything in the database first, so agree in the group before using it.
+This creates constraints, allergen and event-category nodes, 11 food items (with pictures from `seed_images/`), an admin (`admin@ektemat.test`) and two customers (`kari.nordmann@ektemat.test`, `ola.hansen@ektemat.test`). It is safe to rerun: it only adds what is missing and never overwrites changes made in the admin panel. `python seed.py --reset` deletes everything in the database first, so agree in the group before using it.
 
 ## Run
 

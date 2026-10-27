@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Preview picture · Admin · Ekte Mat Online{% endblock %}
+{% block content %}
+{% with active='food_items' %}{% include "admin/_nav.html" %}{% endwith %}
+<h1>Preview: new picture for {{ item.name }}</h1>
+<p>The new picture is not saved yet. Customers still see the current one.</p>
+<div class="compare">
+  <figure>
+    {% with name=item.image_filename, alt='Current picture', cls='picture' %}{% include "admin/food_items/_picture.html" %}{% endwith %}
+    <figcaption>Current</figcaption>
+  </figure>
+  <figure>
+    {% with name=draft, alt='New picture', cls='picture picture-new' %}{% include "admin/food_items/_picture.html" %}{% endwith %}
+    <figcaption>New</figcaption>
+  </figure>
+</div>
+<div class="form-actions">
+  <form method="post" action="{{ url_for('admin.save_image', item_id=item.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="button" type="submit">Save new picture</button>
+  </form>
+  <form method="post" action="{{ url_for('admin.discard_image', item_id=item.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="link" type="submit">Discard</button>
+  </form>
+  <a href="{{ url_for('admin.image_page', item_id=item.id) }}">Try again</a>
+</div>
+{% endblock %}

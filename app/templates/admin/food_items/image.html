@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Picture for {{ item.name }} · Admin · Ekte Mat Online{% endblock %}
+{% block content %}
+{% with active='food_items' %}{% include "admin/_nav.html" %}{% endwith %}
+<h1>Picture for {{ item.name }}</h1>
+{% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+
+<div class="picture-layout">
+  <figure class="picture-current">
+    {% with name=item.image_filename, alt=item.name, cls='picture' %}{% include "admin/food_items/_picture.html" %}{% endwith %}
+    <figcaption>{{ 'Current picture' if item.image_filename else 'No picture yet (customers see this placeholder)' }}</figcaption>
+    {% if item.image_filename %}
+      <form method="post" action="{{ url_for('admin.remove_image', item_id=item.id) }}"
+            data-confirm="Remove the picture for {{ item.name }}?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="link danger" type="submit">Remove picture</button>
+      </form>
+    {% endif %}
+  </figure>
+
+  <div class="picture-options">
+    <section class="panel">
+      <h2>Upload a picture</h2>
+      <form method="post" action="{{ url_for('admin.upload_image', item_id=item.id) }}" enctype="multipart/form-data" class="form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>JPEG, PNG or WebP, max 5 MB
+          <input type="file" name="picture" accept="image/jpeg,image/png,image/webp" required>
+        </label>
+        <button class="button" type="submit">Upload and preview</button>
+      </form>
+    </section>
+
+    {% if generator_enabled %}
+    <section class="panel">
+      <h2>Create or modify with AI</h2>
+      <form method="post" action="{{ url_for('admin.generate_image', item_id=item.id) }}" class="form" data-busy="Generating… this takes about 10 seconds.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <fieldset class="checks">
+          <legend>What should the AI do?</legend>
+          <label class="check"><input type="radio" name="mode" value="create" {% if mode != 'modify' %}checked{% endif %}> Create a new picture</label>
+          <label class="check"><input type="radio" name="mode" value="modify" {% if mode == 'modify' %}checked{% endif %}
+            {% if not item.image_filename %}disabled{% endif %}> Modify the current picture</label>
+        </fieldset>
+        <label>Instruction
+          <textarea name="instruction" rows="4" maxlength="{{ instruction_max }}" required>{{ instruction }}</textarea>
+        </label>
+        <p class="hint">The suggested text gives every item the same illustration style. For "modify", describe the change, e.g. "add a sprig of dill".</p>
+        <button class="button" type="submit">Generate and preview</button>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+</div>
+<p><a href="{{ url_for('admin.food_items') }}">Back to food items</a></p>
+{% endblock %}

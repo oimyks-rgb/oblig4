@@ -1,6 +1,6 @@
 """Seed the Neo4j database in .env with synthetic data.
 
-    python seed.py           add or update sample data (safe to rerun)
+    python seed.py           add missing sample data and seed pictures (safe to rerun)
     python seed.py --reset   delete EVERYTHING in the database first (asks for confirmation)
 
 The whole group shares one database: agree before using --reset.
@@ -9,6 +9,8 @@ The whole group shares one database: agree before using --reset.
 import argparse
 import os
 import sys
+from dataclasses import replace
+from pathlib import Path
 
 from werkzeug.security import generate_password_hash
 
@@ -18,6 +20,7 @@ from app.models.domain import Allergen as A
 from app.models.domain import DietaryLabel as D
 from app.models.domain import EventCategory as E
 from app.models.domain import FoodItem, Role, User
+from app.models.images import image_name
 from app.models.neo4j_db import create_driver, ensure_schema, reset_database
 
 FOOD_ITEMS = [
@@ -45,12 +48,38 @@ FOOD_ITEMS = [
              75, 20, [E.CHRISTMAS_PARTY, E.WEDDING], [A.MILK], [D.GLUTEN_FREE, D.VEGETARIAN], False),
 ]
 
+SEED_IMAGES = Path(__file__).parent / "seed_images"  # made by generate_images.py, committed to git
+
 USERS = [
     # (id, email, name, role, password env var)
     ("seed-admin", "admin@ektemat.test", "Ekte Mat Admin", Role.ADMIN, "SEED_ADMIN_PASSWORD"),
     ("seed-kari", "kari.nordmann@ektemat.test", "Kari Nordmann", Role.CUSTOMER, "SEED_CUSTOMER_PASSWORD"),
     ("seed-ola", "ola.hansen@ektemat.test", "Ola Hansen", Role.CUSTOMER, "SEED_CUSTOMER_PASSWORD"),
 ]
+
+
+def attach_seed_images(repositories, folder: Path = SEED_IMAGES) -> int:
+    """Put the committed seed pictures into this machine's image store.
+
+    Names are content hashes, so every group member ends up with the same name
+    in the shared database. Pictures staff chose themselves are left alone.
+    """
+    count = 0
+    for item in FOOD_ITEMS:
+        path = folder / f"{item.id}.jpg"
+        current = repositories.food_items.get(item.id)
+        if not path.is_file() or current is None:
+            continue
+        data = path.read_bytes()
+        name = image_name(data)
+        if current.image_filename is None:
+            repositories.images.save(data)
+            repositories.food_items.update(replace(current, image_filename=name))
+            count += 1
+        elif current.image_filename == name and not repositories.images.exists(name):
+            repositories.images.save(data)  # picture set by another member; restore the local file
+            count += 1
+    return count
 
 
 def main() -> int:
@@ -77,18 +106,19 @@ def main() -> int:
 
     with app.app_context():
         food_items = repos().food_items
+        added = 0
         for item in FOOD_ITEMS:
-            if food_items.get(item.id):
-                food_items.update(item)
-            else:
+            if not food_items.get(item.id):  # never overwrite changes staff made
                 food_items.add(item)
+                added += 1
+        pictures = attach_seed_images(repos())
 
         users = repos().users
         for user_id, email, name, role, password_var in USERS:
             if not users.get_by_email(email):
                 users.add(User(user_id, email, name, generate_password_hash(os.environ[password_var]), role))
 
-    print(f"Seeded {len(FOOD_ITEMS)} food items and {len(USERS)} users.")
+    print(f"Added {added} of {len(FOOD_ITEMS)} sample food items, {pictures} pictures; {len(USERS)} users checked.")
     return 0
 
 

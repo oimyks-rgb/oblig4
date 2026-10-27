@@ -31,12 +31,16 @@ app/
     memory.py        # in-memory implementations for tests
     food_items.py    # business rules: parse_food_item(), publish_errors()
     accounts.py      # authenticate()
+    images.py        # process_image(), ImageStore (content-hash names), LocalImageStore
+    image_generation.py  # ImageGenerator: GeminiImageGenerator, FakeImageGenerator, prompts
   controllers/       # blueprints: shop (/), account (/account), admin (/admin)
     auth.py          # g.user, current_user in templates, @login_required, @admin_required
   templates/         # Jinja2 views, one folder per blueprint; base.html
   static/            # css/, img/, uploads/ (git-ignored)
 tests/               # pytest; test_neo4j_repos.py is marked `neo4j`
-seed.py              # synthetic food items, an admin, test customers
+seed.py              # synthetic food items, an admin, test customers, seed pictures
+generate_images.py   # makes seed_images/*.jpg with the configured image generator (paid for Gemini)
+seed_images/         # committed default illustrations for the seed items
 docs/models/graph-model.md  # the graph data model
 ```
 
@@ -44,11 +48,14 @@ Layer rules:
 - Controllers get data through `repos()` from `app.models` (for example `repos().food_items.list(published_only=True)`). They never import `neo4j` or write Cypher.
 - Views get plain data from controllers and contain no business logic.
 - Validation and business rules live in the model layer (pattern: `models/food_items.py` returns the object plus a field -> message dict). Controllers only pass `request.form` in and re-render with the errors (status 400).
+- Pictures go through `repos().images` (an `ImageStore`, files in `instance/images/`), and AI pictures through `image_generator()` (None when `IMAGE_GENERATOR` is empty). New pictures are always saved as a draft and previewed before they replace the current one (A2).
+- Tests never call Gemini: use `FakeImageGenerator` or a fake client. `GEMINI_API_KEY` lives only in `.env`.
 - Every admin route has `@admin_required`. Every POST form includes `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">` (Flask-WTF `CSRFProtect`). State changes are POST, never GET.
 - A new kind of data needs a domain class, an interface in `repositories.py`, and both a Neo4j and an in-memory implementation. Check both with one shared contract test (see `tests/test_memory_repos.py`).
 - Repositories return domain objects, not driver records. Use parameterised Cypher (`$param`), never string formatting.
 - Storage is a shared Neo4j AuraDB Free instance, used through the official `neo4j` Python driver. This also covers assignment 5: say "Neo4j: yes" on the report's front page.
 - Graph model: nodes are labelled like the domain classes, and relationships are UPPER_SNAKE verbs. Update `docs/models/graph-model.md` when the model changes.
+- Other `.env` settings: `IMAGE_GENERATOR` (gemini/fake/empty), `GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`.
 - Connection settings come from `.env`: `NEO4J_URI` (`neo4j+s://<id>.databases.neo4j.io`), `NEO4J_USER`, `NEO4J_PASSWORD`. Share them within the group privately, never in git, issues or chat logs.
 
 ## Running and testing

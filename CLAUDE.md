@@ -19,46 +19,50 @@ All data is synthetic. Never add real personal data.
 
 ## Architecture (MVC, Flask)
 
-Planned layout. Update this section when the code exists.
-
 ```
 app/
-  __init__.py      # create_app() factory, registers blueprints
-  models/          # domain classes + Neo4j repositories (the ONLY code that touches the database)
-  controllers/     # Flask blueprints: shop, account, admin
-  templates/       # Jinja2 views, one folder per blueprint
-  static/          # CSS, JS, uploaded images
-tests/             # in-memory fake repositories; Neo4j tests marked `neo4j`
-seed.py            # synthetic food items, an admin, test customers
-.env.example       # names of the settings, no values
+  __init__.py        # create_app(config): loads .env, builds repositories, registers blueprints
+  config.py          # Config (Neo4j from .env), TestConfig (in-memory)
+  models/            # the ONLY layer that touches the database
+    domain.py        # dataclasses + enums (FoodItem, User, OrderStatus, ...)
+    repositories.py  # repository interfaces (ABCs) + Repositories container
+    neo4j_db.py      # driver, ensure_schema(), reset_database()
+    neo4j_repos.py   # Neo4j implementations (Cypher lives here only)
+    memory.py        # in-memory implementations for tests
+  controllers/       # blueprints: shop (/), account (/account), admin (/admin)
+  templates/         # Jinja2 views, one folder per blueprint; base.html
+  static/            # css/, img/, uploads/ (git-ignored)
+tests/               # pytest; test_neo4j_repos.py is marked `neo4j`
+seed.py              # synthetic food items, an admin, test customers
+docs/models/graph-model.md  # the graph data model
 ```
 
 Layer rules:
-- Controllers call repository classes only. They never import the `neo4j` driver or write Cypher.
+- Controllers get data through `repos()` from `app.models` (for example `repos().food_items.list(published_only=True)`). They never import `neo4j` or write Cypher.
 - Views get plain data from controllers and contain no business logic.
+- A new kind of data needs a domain class, an interface in `repositories.py`, and both a Neo4j and an in-memory implementation. Check both with one shared contract test (see `tests/test_memory_repos.py`).
 - Repositories return domain objects, not driver records. Use parameterised Cypher (`$param`), never string formatting.
 - Storage is a shared Neo4j AuraDB Free instance, used through the official `neo4j` Python driver. This also covers assignment 5: say "Neo4j: yes" on the report's front page.
-- Graph model: nodes are labelled like the domain classes (`:FoodItem`, `:Customer`, `:Order`, ...). Relationships are UPPER_SNAKE verbs (for example `(:Customer)-[:PLACED]->(:Order)-[:CONTAINS {quantity}]->(:FoodItem)`). Document the graph model in `docs/models/` when it changes.
+- Graph model: nodes are labelled like the domain classes, and relationships are UPPER_SNAKE verbs. Update `docs/models/graph-model.md` when the model changes.
 - Connection settings come from `.env`: `NEO4J_URI` (`neo4j+s://<id>.databases.neo4j.io`), `NEO4J_USER`, `NEO4J_PASSWORD`. Share them within the group privately, never in git, issues or chat logs.
-- Each repository has an interface (an abstract base class) with a Neo4j implementation and an in-memory fake used in tests.
 
 ## Running and testing
 
-Planned commands. Keep these in sync with the README.
+Keep these commands in sync with the README.
 
 ```
-cp .env.example .env          # then fill in the Aura credentials
+cp .env.example .env          # then fill in the Aura credentials and seed passwords
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python seed.py                # creates constraints and sample data with MERGE (safe to rerun)
-flask --app app run --debug
+python seed.py                # constraints + sample data, safe to rerun
+flask --app app run --debug --port 5001   # port 5000 is AirPlay on macOS
 pytest                        # fast tests, in-memory repositories, no database
 pytest -m neo4j               # repository tests against Aura
 ```
 
 The whole group shares one Aura database:
-- `seed.py` must never delete data unless it is run with `--reset`. Agree in the group before resetting.
-- Neo4j tests only create nodes with the extra label `:Test`, and delete only `:Test` nodes afterwards.
+- `seed.py` must never delete data unless it is run with `--reset`, which asks for confirmation. Agree in the group before resetting.
+- Neo4j tests only create data with ids starting `test-` and e-mails ending `@test.invalid`, and delete only that data afterwards. Never assert exact counts against Aura.
 - Aura Free pauses after a few days without use. Resume it in the Aura console if the connection fails.
 
 ## Team rules

@@ -1,3 +1,5 @@
 <nav class="admin-nav">
   <a href="{{ url_for('admin.food_items') }}" {% if active == 'food_items' %}aria-current="page"{% endif %}>Food items</a>
+  <a href="{{ url_for('admin.orders') }}" {% if active == 'orders' %}aria-current="page"{% endif %}>Orders</a>
+  <a href="{{ url_for('admin.questions') }}" {% if active == 'questions' %}aria-current="page"{% endif %}>Questions{% if unanswered_count %} <span class="count">{{ unanswered_count }}</span>{% endif %}</a>
 </nav>

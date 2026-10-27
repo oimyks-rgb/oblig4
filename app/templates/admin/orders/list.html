@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Orders · Admin · Ekte Mat Online{% endblock %}
+{% block content %}
+{% with active='orders' %}{% include "admin/_nav.html" %}{% endwith %}
+<h1>Orders</h1>
+
+<form method="get" class="filters">
+  <label>Status
+    <select name="status">
+      <option value="open" {% if status_filter == 'open' %}selected{% endif %}>Open (submitted, approved, in preparation)</option>
+      <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+      {% for s in statuses %}<option value="{{ s.value }}" {% if status_filter == s.value %}selected{% endif %}>{{ s.label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Event date
+    <input type="date" name="event_date" value="{{ event_date }}">
+  </label>
+  <button class="button" type="submit">Filter</button>
+  {% if event_date or status_filter != 'open' %}<a href="{{ url_for('admin.orders') }}">Reset</a>{% endif %}
+</form>
+
+{% if orders %}
+<div class="table-wrap">
+<table class="table orders-table">
+  <thead>
+    <tr><th>Order</th><th>Customer</th><th>Event date</th><th class="num">Guests</th><th class="num">Total</th><th>Status</th><th>Payment</th><th>Questions</th></tr>
+  </thead>
+  <tbody>
+  {% for order in orders %}
+    {% set customer = customers.get(order.customer_id) %}
+    <tr>
+      <td data-label="Order"><a class="nowrap" href="{{ url_for('admin.order', order_id=order.id) }}">{{ order.reference }}</a></td>
+      <td data-label="Customer">{{ customer.name if customer else '(deleted)' }}</td>
+      <td data-label="Event date" class="nowrap">{{ order.event_date.strftime('%a %d.%m.%Y') }}</td>
+      <td data-label="Guests" class="num">{{ order.guest_count }}</td>
+      <td data-label="Total" class="num">{{ order.total_nok | nok }}</td>
+      <td data-label="Status"><span class="badge status-{{ order.status.value }}">{{ order.status.label }}</span></td>
+      <td data-label="Payment"><span class="badge">{{ order.payment_status.label }}</span></td>
+      <td data-label="Questions">{% if unanswered.get(order.id) %}<span class="warn">{{ unanswered[order.id] }} waiting</span>{% else %}<span class="hint">—</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="hint">{{ orders | length }} {{ 'order' if orders | length == 1 else 'orders' }}, soonest event first.</p>
+{% else %}
+  <p>No orders match.</p>
+{% endif %}
+{% endblock %}

@@ -1,12 +1,12 @@
 """Admin panel for Ekte Mat staff: food items, images, orders, questions (A1-A4)."""
 
 from dataclasses import replace
-from datetime import timedelta
+from datetime import date, timedelta
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 
 from ..models import image_generator, repos
-from ..models.domain import Allergen, DietaryLabel, EventCategory
+from ..models.domain import Allergen, DietaryLabel, EventCategory, OrderStatus, PaymentStatus
 from ..models.food_items import parse_food_item, publish_errors
 from ..models.image_generation import (
     INSTRUCTION_MAX,
@@ -14,6 +14,8 @@ from ..models.image_generation import (
     default_illustration_prompt,
 )
 from ..models.images import ImageError, process_image
+from ..models.order_status import check_transition, is_open, next_statuses
+from ..models.questions import ANSWER_MAX, new_answer, parse_answer
 from .auth import admin_required
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -261,3 +263,154 @@ def remove_image(item_id):
 def file_too_large(error):
     flash("The file is too large (max 5 MB).", "error")
     return redirect(request.referrer or url_for("admin.food_items"))
+
+
+# ---------- A3 orders ----------
+
+STATUS_FILTERS = ("open", "all")
+
+
+@bp.context_processor
+def inject_unanswered_count():
+    """Admin pages only: the number of questions waiting for an answer (A4), shown in the admin nav."""
+    if not (g.get("user") and g.user.is_admin):
+        return {}
+    return {"unanswered_count": len(repos().questions.list_unanswered())}
+
+
+def _parse_status_filter(raw):
+    """("open"/"all"/OrderStatus, error)"""
+    raw = (raw or "open").strip()
+    if raw in STATUS_FILTERS:
+        return raw, None
+    try:
+        return OrderStatus(raw), None
+    except ValueError:
+        return "open", "Unknown status filter; showing open orders."
+
+
+def _parse_date_filter(raw):
+    raw = (raw or "").strip()
+    if not raw:
+        return None, None
+    try:
+        return date.fromisoformat(raw), None
+    except ValueError:
+        return None, "Use a valid event date."
+
+
+@bp.route("/orders/")
+@admin_required
+def orders():
+    status_filter, status_error = _parse_status_filter(request.args.get("status"))
+    event_date, date_error = _parse_date_filter(request.args.get("event_date"))
+    for error in (status_error, date_error):
+        if error:
+            flash(error, "error")
+
+    found = repos().orders.list(
+        status=status_filter if isinstance(status_filter, OrderStatus) else None,
+        event_date=event_date,
+    )
+    if status_filter == "open":
+        found = [o for o in found if is_open(o.status)]
+    found.sort(key=lambda o: (o.event_date, o.created_at))  # soonest event first, for the kitchen
+
+    customers = {cid: repos().users.get(cid) for cid in {o.customer_id for o in found}}
+    unanswered = {}
+    for question in repos().questions.list_unanswered():
+        unanswered[question.order_id] = unanswered.get(question.order_id, 0) + 1
+    return render_template(
+        "admin/orders/list.html",
+        orders=found,
+        customers=customers,
+        unanswered=unanswered,
+        statuses=list(OrderStatus),
+        status_filter=status_filter.value if isinstance(status_filter, OrderStatus) else status_filter,
+        event_date=event_date.isoformat() if event_date else "",
+    )
+
+
+def _get_order_or_404(order_id):
+    found = repos().orders.get(order_id)
+    if found is None:
+        abort(404)
+    return found
+
+
+@bp.route("/orders/<order_id>")
+@admin_required
+def order(order_id):
+    found = _get_order_or_404(order_id)
+    return render_template(
+        "admin/orders/order.html",
+        order=found,
+        customer=repos().users.get(found.customer_id),
+        questions=repos().questions.list_for_order(found.id),
+        next_statuses=next_statuses(found.status),
+        payment_statuses=list(PaymentStatus),
+        answer_max=ANSWER_MAX,
+    )
+
+
+@bp.route("/orders/<order_id>/status", methods=["POST"])
+@admin_required
+def change_order_status(order_id):
+    found = _get_order_or_404(order_id)
+    try:
+        new = OrderStatus(request.form.get("status", ""))
+    except ValueError:
+        flash("Choose a valid status.", "error")
+        return redirect(url_for("admin.order", order_id=order_id))
+    error = check_transition(found.status, new)
+    if error:
+        flash(error, "error")
+    else:
+        repos().orders.update_status(order_id, status=new)
+        flash(f"Status of {found.reference} changed to {new.label}.", "success")
+    return redirect(url_for("admin.order", order_id=order_id))
+
+
+@bp.route("/orders/<order_id>/payment", methods=["POST"])
+@admin_required
+def change_payment_status(order_id):
+    found = _get_order_or_404(order_id)
+    try:
+        new = PaymentStatus(request.form.get("payment_status", ""))
+    except ValueError:
+        flash("Choose a valid payment status.", "error")
+        return redirect(url_for("admin.order", order_id=order_id))
+    if new != found.payment_status:
+        repos().orders.update_status(order_id, payment_status=new)
+        flash(f"Payment status of {found.reference} changed to {new.label}.", "success")
+    return redirect(url_for("admin.order", order_id=order_id))
+
+
+# ---------- A4 questions ----------
+
+
+@bp.route("/questions/")
+@admin_required
+def questions():
+    waiting = repos().questions.list_unanswered()
+    orders_by_id = {oid: repos().orders.get(oid) for oid in {q.order_id for q in waiting}}
+    customers = {cid: repos().users.get(cid) for cid in {q.customer_id for q in waiting}}
+    return render_template(
+        "admin/questions/list.html", questions=waiting, orders=orders_by_id, customers=customers
+    )
+
+
+@bp.route("/questions/<question_id>/answer", methods=["POST"])
+@admin_required
+def answer_question(question_id):
+    order_id = request.form.get("order_id", "")
+    found = _get_order_or_404(order_id)
+    if not any(q.id == question_id for q in repos().questions.list_for_order(found.id)):
+        abort(404)
+    text, errors = parse_answer(request.form.get("answer", ""))
+    if errors:
+        flash(errors["answer"], "error")
+    else:
+        repos().questions.answer(question_id, new_answer(text, g.user))
+        flash("Answer saved. The customer can read it on the order page.", "success")
+    return redirect(url_for("admin.order", order_id=found.id, _anchor=f"q-{question_id}"))

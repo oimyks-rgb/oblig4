@@ -1,0 +1,32 @@
+{# Event, delivery, guest groups, lines and total of an order. Shared by the customer and admin pages. #}
+<div class="order-details">
+  <section class="panel">
+    <h2>Event</h2>
+    <dl class="facts">
+      <dt>Date</dt><dd>{{ order.event_date.strftime('%A %d.%m.%Y') }}</dd>
+      {% if order.event_category %}<dt>Type</dt><dd>{{ order.event_category.label }}</dd>{% endif %}
+      <dt>Guests</dt><dd>{{ order.guest_count }}</dd>
+      <dt>Delivery</dt><dd>{{ order.delivery_address }}</dd>
+      {% if order.phone %}<dt>Phone</dt><dd>{{ order.phone }}</dd>{% endif %}
+    </dl>
+  </section>
+  <section class="panel">
+    <h2>Allergies and diets</h2>
+    {% if order.guest_groups %}
+      <ul class="plain">{% for g in order.guest_groups %}<li><strong>{{ g.guest_count }}</strong> {{ 'guest' if g.guest_count == 1 else 'guests' }}: {{ g.note }}</li>{% endfor %}</ul>
+    {% else %}<p>None given.</p>{% endif %}
+    {% if order.comment %}<h3>Comment</h3><p>{{ order.comment }}</p>{% endif %}
+  </section>
+</div>
+
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Item</th><th class="num">Price</th><th class="num">Portions</th><th class="num">Line total</th></tr></thead>
+  <tbody>
+  {% for line in order.lines %}
+    <tr><td>{{ line.name }}</td><td class="num">{{ line.unit_price_nok | nok }}</td><td class="num">{{ line.quantity }}</td><td class="num">{{ line.line_total | nok }}</td></tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr><th colspan="3">Estimated total</th><th class="num">{{ order.total_nok | nok }}</th></tr></tfoot>
+</table>
+</div>

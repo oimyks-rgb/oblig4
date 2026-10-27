@@ -41,13 +41,14 @@ Dietary labels are only displayed, so they stay a simple property.
 
 ```mermaid
 graph LR
-  U["User"] -- PLACED --> O["Order<br/>id, reference, createdAt,<br/>eventDate (date), eventCategory,<br/>guestCount, deliveryStreet,<br/>deliveryPostcode, deliveryCity,<br/>phone, comment, status, paymentStatus"]
+  U["User"] -- PLACED --> O["Order<br/>id, reference, createdAt,<br/>eventDate (date), eventCategory,<br/>guestCount, deliveryStreet,<br/>deliveryPostcode, deliveryCity,<br/>phone, comment, status, paymentStatus,<br/>statusChangedAt"]
   O -- "INCLUDES<br/>{quantity, unitPriceNok, name, position}" --> F["FoodItem"]
   O -- HAS_GUEST_GROUP --> G["GuestGroup<br/>guestCount, note, position"]
 ```
 
 - `INCLUDES` copies the name and price when the order is placed, so changing the menu later doesn't change old orders. A food item that has been ordered can't be deleted, only unpublished.
 - `GuestGroup` stores a count and a note, such as "2: nut allergy", but never guest names (US-36, GDPR art. 9).
+- `statusChangedAt` is set whenever staff change the order or payment status (A3). The allowed changes are in [order-status.md](order-status.md).
 - Constraints: `Order.id` and `Order.reference` are unique.
 
 ## Questions and answers (C5, A4)

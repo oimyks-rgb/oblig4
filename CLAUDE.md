@@ -33,10 +33,12 @@ app/
     accounts.py      # authenticate()
     cart.py          # cart rules: validate_quantity(), cart_lines() (cart = session dict)
     orders.py        # parse_checkout(), place_order(), MIN_LEAD_DAYS
-    questions.py     # parse_question(), new_question() (C5)
+    questions.py     # parse_question(), parse_answer() (C5, A4)
+    order_status.py  # order state machine: next_statuses(), check_transition() (A3)
     images.py        # process_image(), ImageStore (content-hash names), LocalImageStore
     image_generation.py  # ImageGenerator: GeminiImageGenerator, FakeImageGenerator, prompts
-  controllers/       # blueprints: shop (/ and /cart), account (/account), order (/order), admin (/admin)
+  controllers/       # blueprints: shop (/ and /cart), account (/account), order (/order),
+                     #   admin (/admin: food-items, orders, questions)
     auth.py          # g.user, current_user in templates, @login_required, @admin_required
   templates/         # Jinja2 views, one folder per blueprint; base.html
   static/            # css/, img/, uploads/ (git-ignored)
@@ -54,6 +56,7 @@ Layer rules:
 - Pictures go through `repos().images` (an `ImageStore`, files in `instance/images/`), and AI pictures through `image_generator()` (None when `IMAGE_GENERATOR` is empty). New pictures are always saved as a draft and previewed before they replace the current one (A2).
 - The cart is `session["cart"]` (`{food_item_id: quantity}`); login and registration keep it. The minimum order applies to the total quantity of an item.
 - Orders copy the item name and price into each line. Ordered food items can't be deleted (`is_ordered`). Guest groups hold a count and a note, never guest names (US-36).
+- Order status changes always go through `check_transition()` (see `docs/models/order-status.md`). Payment status can be set freely.
 - Only the customer who placed an order can ask about it. Answers are written only by staff (A4) through `repos().questions.answer()`. Other customers get 404, never 403, for orders that aren't theirs.
 - Tests never call Gemini: use `FakeImageGenerator` or a fake client. `GEMINI_API_KEY` lives only in `.env`.
 - Every admin route has `@admin_required`. Every POST form includes `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">` (Flask-WTF `CSRFProtect`). State changes are POST, never GET.

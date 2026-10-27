@@ -5,7 +5,7 @@ Only the model layer imports this module.
 
 import atexit
 
-from neo4j import Driver, GraphDatabase
+from neo4j import Driver, GraphDatabase, NotificationDisabledClassification
 
 from .domain import Allergen, EventCategory
 
@@ -26,7 +26,12 @@ def create_driver(uri: str, user: str, password: str) -> Driver:
             "Neo4j is not configured. Copy .env.example to .env and set "
             "NEO4J_URI, NEO4J_USER and NEO4J_PASSWORD."
         )
-    driver = GraphDatabase.driver(uri, auth=(user, password))
+    driver = GraphDatabase.driver(
+        uri,
+        auth=(user, password),
+        # "label/relationship type does not exist" is expected on an empty database
+        notifications_disabled_classifications=[NotificationDisabledClassification.UNRECOGNIZED],
+    )
     atexit.register(driver.close)
     return driver
 

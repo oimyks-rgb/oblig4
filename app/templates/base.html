@@ -11,13 +11,31 @@
     <a class="brand" href="{{ url_for('shop.index') }}">Ekte Mat</a>
     <nav>
       <a href="{{ url_for('shop.index') }}">Menu</a>
-      <a href="{{ url_for('account.index') }}">My orders</a>
-      <a href="{{ url_for('admin.index') }}">Admin</a>
+      {% if current_user %}
+        <a href="{{ url_for('account.index') }}">My orders</a>
+        {% if current_user.is_admin %}<a href="{{ url_for('admin.index') }}">Admin</a>{% endif %}
+        <form class="inline" method="post" action="{{ url_for('account.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="link" type="submit">Log out</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('account.login') }}">Log in</a>
+      {% endif %}
     </nav>
   </header>
   <main>
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+      <p class="flash flash-{{ category }}" role="status">{{ message }}</p>
+    {% endfor %}
     {% block content %}{% endblock %}
   </main>
   <footer class="site-footer">Ekte Mat AS · Bergen · synthetic demo data</footer>
+  <script>
+    // Forms with data-confirm ask before submitting (e.g. delete)
+    document.addEventListener("submit", (event) => {
+      const message = event.target.dataset.confirm;
+      if (message && !confirm(message)) event.preventDefault();
+    });
+  </script>
 </body>
 </html>

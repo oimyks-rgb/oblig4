@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Food items · Admin · Ekte Mat Online{% endblock %}
+{% block content %}
+{% with active='food_items' %}{% include "admin/_nav.html" %}{% endwith %}
+<div class="page-head">
+  <h1>Food items</h1>
+  <a class="button" href="{{ url_for('admin.new_food_item') }}">Add food item</a>
+</div>
+<div class="table-wrap">
+<table class="table">
+  <thead>
+    <tr><th>Name</th><th>Price</th><th>Min. order</th><th>Event categories</th><th>Allergens</th><th>Status</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for item in items %}
+    <tr>
+      <td><a href="{{ url_for('admin.edit_food_item', item_id=item.id) }}">{{ item.name }}</a></td>
+      <td class="num">{{ item.price_nok | nok }}</td>
+      <td class="num">{{ item.min_order_qty }}</td>
+      <td>{{ item.event_categories | map(attribute='label') | join(', ') or '—' }}</td>
+      <td>
+        {% if item.allergens %}{{ item.allergens | map(attribute='label') | join(', ') }}
+        {% elif item.no_allergens %}None
+        {% else %}<span class="warn">Not declared</span>{% endif %}
+      </td>
+      <td>{% if item.published %}<span class="badge badge-on">Published</span>{% else %}<span class="badge">Hidden</span>{% endif %}</td>
+      <td class="actions">
+        <a href="{{ url_for('admin.edit_food_item', item_id=item.id) }}">Edit</a>
+        <form class="inline" method="post" action="{{ url_for('admin.toggle_published', item_id=item.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="link" type="submit">{{ 'Unpublish' if item.published else 'Publish' }}</button>
+        </form>
+        <form class="inline" method="post" action="{{ url_for('admin.delete_food_item', item_id=item.id) }}"
+              data-confirm="Delete {{ item.name }}? This cannot be undone.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="link danger" type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7">No food items yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

@@ -66,3 +66,66 @@ h2 { color: var(--green); border-bottom: 2px solid var(--green-light); padding-b
 .table th, .table td { padding: 0.5rem; border-bottom: 1px solid var(--border); text-align: left; }
 
 .site-footer { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 1rem; }
+
+/* ---------- flash messages ---------- */
+.flash { padding: 0.6rem 0.9rem; border-radius: 6px; background: var(--green-light); }
+.flash-error { background: #fbe9e7; color: #8a1f11; }
+
+/* ---------- buttons and links ---------- */
+.button {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--green);
+  color: #fff;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+button.link {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.site-header button.link { color: #fff; text-decoration: none; }
+.danger { color: #a3261a !important; }
+form.inline { display: inline; }
+
+/* ---------- forms ---------- */
+.form { display: grid; gap: 1rem; max-width: 760px; }
+.form.narrow { max-width: 360px; }
+.form label { display: grid; gap: 0.25rem; font-weight: 600; }
+.form input[type=text], .form input[type=email], .form input[type=password],
+.form input[type=number], .form textarea {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 400;
+}
+.form .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+.checks { border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.75rem 0.75rem; }
+.checks legend { font-weight: 600; padding: 0 0.25rem; }
+.form label.check { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0.25rem 1rem 0 0; font-weight: 400; }
+.form label.standalone { margin-top: -0.5rem; }
+.has-error input, .has-error textarea, .checks.has-error { border-color: #c62828; }
+.error { color: #a3261a; font-weight: 400; font-size: 0.9rem; margin: 0.25rem 0 0; }
+.form-actions { display: flex; gap: 1rem; align-items: center; }
+
+/* ---------- admin ---------- */
+.admin-nav { display: flex; gap: 1rem; margin-bottom: 1rem; font-size: 0.95rem; }
+.admin-nav a { color: var(--muted); }
+.admin-nav a[aria-current=page] { color: var(--green); font-weight: 700; }
+.page-head { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; }
+.table-wrap { overflow-x: auto; }
+.table td.num { text-align: right; white-space: nowrap; }
+.table td.actions { white-space: nowrap; }
+.table td.actions > * { margin-right: 0.75rem; }
+.badge { display: inline-block; padding: 0 0.5rem; border-radius: 999px; background: #eee; font-size: 0.8rem; }
+.badge-on { background: var(--green-light); color: var(--green); }
+.warn { color: #a3261a; }

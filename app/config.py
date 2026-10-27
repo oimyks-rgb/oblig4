@@ -7,6 +7,7 @@ import secrets
 class Config:
     REPOSITORY_BACKEND = "neo4j"
     TESTING = False
+    SESSION_COOKIE_SAMESITE = "Lax"
 
     def __init__(self):
         # Read at instantiation, after create_app() has loaded .env
@@ -19,8 +20,11 @@ class Config:
 class TestConfig(Config):
     """In-memory repositories; never touches Neo4j."""
 
+    __test__ = False  # not a pytest test class
+
     REPOSITORY_BACKEND = "memory"
     TESTING = True
+    WTF_CSRF_ENABLED = False
 
     def __init__(self):
         super().__init__()

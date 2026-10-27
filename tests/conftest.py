@@ -30,3 +30,36 @@ def make_item(item_id="item-1", name="Fish soup", published=True, **kwargs) -> F
     )
     defaults.update(kwargs)
     return FoodItem(id=item_id, name=name, published=published, **defaults)
+
+
+TEST_PASSWORD = "correct horse battery staple"
+
+
+def add_user(repositories, user_id, email, role):
+    from werkzeug.security import generate_password_hash
+
+    from app.models.domain import User
+
+    return repositories.users.add(User(user_id, email, user_id.title(), generate_password_hash(TEST_PASSWORD), role))
+
+
+def log_in(client, email, password=TEST_PASSWORD, **extra):
+    return client.post("/account/login", data={"email": email, "password": password, **extra})
+
+
+@pytest.fixture
+def admin_client(client, repositories):
+    from app.models.domain import Role
+
+    add_user(repositories, "admin", "admin@example.test", Role.ADMIN)
+    log_in(client, "admin@example.test")
+    return client
+
+
+@pytest.fixture
+def customer_client(client, repositories):
+    from app.models.domain import Role
+
+    add_user(repositories, "kari", "kari@example.test", Role.CUSTOMER)
+    log_in(client, "kari@example.test")
+    return client

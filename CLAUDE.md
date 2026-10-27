@@ -29,7 +29,10 @@ app/
     neo4j_db.py      # driver, ensure_schema(), reset_database()
     neo4j_repos.py   # Neo4j implementations (Cypher lives here only)
     memory.py        # in-memory implementations for tests
+    food_items.py    # business rules: parse_food_item(), publish_errors()
+    accounts.py      # authenticate()
   controllers/       # blueprints: shop (/), account (/account), admin (/admin)
+    auth.py          # g.user, current_user in templates, @login_required, @admin_required
   templates/         # Jinja2 views, one folder per blueprint; base.html
   static/            # css/, img/, uploads/ (git-ignored)
 tests/               # pytest; test_neo4j_repos.py is marked `neo4j`
@@ -40,6 +43,8 @@ docs/models/graph-model.md  # the graph data model
 Layer rules:
 - Controllers get data through `repos()` from `app.models` (for example `repos().food_items.list(published_only=True)`). They never import `neo4j` or write Cypher.
 - Views get plain data from controllers and contain no business logic.
+- Validation and business rules live in the model layer (pattern: `models/food_items.py` returns the object plus a field -> message dict). Controllers only pass `request.form` in and re-render with the errors (status 400).
+- Every admin route has `@admin_required`. Every POST form includes `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">` (Flask-WTF `CSRFProtect`). State changes are POST, never GET.
 - A new kind of data needs a domain class, an interface in `repositories.py`, and both a Neo4j and an in-memory implementation. Check both with one shared contract test (see `tests/test_memory_repos.py`).
 - Repositories return domain objects, not driver records. Use parameterised Cypher (`$param`), never string formatting.
 - Storage is a shared Neo4j AuraDB Free instance, used through the official `neo4j` Python driver. This also covers assignment 5: say "Neo4j: yes" on the report's front page.

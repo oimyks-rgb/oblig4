@@ -4,6 +4,12 @@
 {% block content %}
 {% with active='food_items' %}{% include "admin/_nav.html" %}{% endwith %}
 <h1>{{ title }}</h1>
+{% if not is_new %}
+  <p class="form-picture">
+    {% with name=item.image_filename, alt='Picture of ' ~ item.name, cls='thumb' %}{% include "admin/food_items/_picture.html" %}{% endwith %}
+    <a href="{{ url_for('admin.image_page', item_id=item.id) }}">{{ 'Change picture' if item.image_filename else 'Add a picture' }}</a>
+  </p>
+{% endif %}
 {% if errors %}<p class="flash flash-error" role="alert">Please fix the fields marked below.</p>{% endif %}
 
 {% macro value(field, default) -%}

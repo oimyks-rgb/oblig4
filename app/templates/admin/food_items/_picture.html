@@ -1,0 +1,4 @@
+{# A food item picture, or the placeholder. Needs: name (image name or None), alt, cls #}
+<img class="{{ cls }}" alt="{{ alt }}"
+     src="{{ url_for('shop.image', name=name) if name else url_for('static', filename='img/placeholder.svg') }}"
+     onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/placeholder.svg') }}'">

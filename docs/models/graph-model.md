@@ -27,6 +27,7 @@ Created by `ensure_schema()` in `app/models/neo4j_db.py`:
 | `FoodItem.allergens` | `CONTAINS` relationships to `:Allergen` nodes (the 14 EU allergens) |
 | `FoodItem.event_categories` | `SUITS` relationships to `:EventCategory` nodes |
 | `FoodItem.dietary_labels` | List property on the node |
+| `FoodItem.image_filename` | `imageFilename`: content-hash name (`<32 hex>.jpg`) of a file in the image store, not stored in the graph itself |
 | `FoodItem.no_allergens` | `noAllergens` property: staff confirmed the item has none of the 14 allergens (US-33) |
 | `User` (customers and admins) | `:User` node, where `role` is `customer` or `admin` |
 

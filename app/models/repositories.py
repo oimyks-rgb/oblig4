@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from .domain import EventCategory, FoodItem, User
+from .images import ImageStore
 
 
 class FoodItemRepository(ABC):
@@ -50,3 +51,4 @@ class UserRepository(ABC):
 class Repositories:
     food_items: FoodItemRepository
     users: UserRepository
+    images: ImageStore

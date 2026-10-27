@@ -63,3 +63,14 @@ def customer_client(client, repositories):
     add_user(repositories, "kari", "kari@example.test", Role.CUSTOMER)
     log_in(client, "kari@example.test")
     return client
+
+
+def picture_bytes(size=(64, 48), color=(200, 120, 40), fmt="JPEG", **save_kwargs) -> bytes:
+    import io
+
+    from PIL import Image
+
+    mode = "RGBA" if fmt == "PNG" else "RGB"
+    out = io.BytesIO()
+    Image.new(mode, size, color).save(out, fmt, **save_kwargs)
+    return out.getvalue()

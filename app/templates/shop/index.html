@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Catering menu</h1>
+{% for category, items in sections %}
+  <section class="category">
+    <h2>{{ category.label }}</h2>
+    <div class="cards">
+      {% for item in items %}
+        <article class="card">
+          <img src="{{ url_for('static', filename=('uploads/' ~ item.image_filename) if item.image_filename else 'img/placeholder.svg') }}"
+               alt="{{ item.name }}">
+          <div class="card-body">
+            <h3>{{ item.name }}</h3>
+            <p>{{ item.description }}</p>
+            <p class="price">{{ item.price_nok | nok }} <span>per portion</span></p>
+            <p class="min">Minimum order: {{ item.min_order_qty }}</p>
+            {% if item.allergens %}
+              <p class="allergens">Contains: {{ item.allergens | map(attribute='label') | join(', ') }}</p>
+            {% endif %}
+            {% if item.dietary_labels %}
+              <p class="tags">{% for d in item.dietary_labels %}<span class="tag">{{ d.label }}</span>{% endfor %}</p>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% else %}
+  <p>No food items are published yet.</p>
+{% endfor %}
+{% endblock %}

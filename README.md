@@ -64,7 +64,12 @@ Customers can register at `/account/register`, fill a cart from the menu and pla
 
 The seed creates a demo order `EM-DEMO01` for `kari.nordmann@ektemat.test` with an answered question.
 
-The admin panel is at `/admin/`. Log in as `admin@ektemat.test` with the `SEED_ADMIN_PASSWORD` from `.env`. The test customers use `SEED_CUSTOMER_PASSWORD`.
+The admin panel is at `/admin/`. Log in as `admin@ektemat.test` with the `SEED_ADMIN_PASSWORD` from `.env`. The test customers use `SEED_CUSTOMER_PASSWORD`. In the admin panel:
+
+- **Food items:** add, edit, publish or unpublish, and delete. Items that have been ordered can only be unpublished.
+- **Pictures:** upload a picture, or let Gemini create or modify one, then preview it before saving.
+- **Orders:** filter by status (open by default) and event date. On each order page, change the status (only allowed steps, see `docs/models/order-status.md`) and the payment status.
+- **Questions:** see the questions waiting for an answer, and answer or edit answers on the order page.
 
 ## Test
 

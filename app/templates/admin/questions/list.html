@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Questions · Admin · Ekte Mat Online{% endblock %}
+{% block content %}
+{% with active='questions' %}{% include "admin/_nav.html" %}{% endwith %}
+<h1>Questions waiting for an answer</h1>
+{% for q in questions %}
+  {% set order = orders.get(q.order_id) %}
+  {% set customer = customers.get(q.customer_id) %}
+  <article class="question">
+    <p class="meta">
+      {{ customer.name if customer else 'Customer' }} · {{ q.asked_at | local_time }}
+      {% if order %}· order <a href="{{ url_for('admin.order', order_id=order.id, _anchor='q-' ~ q.id) }}">{{ order.reference }}</a>
+        (event {{ order.event_date.strftime('%d.%m.%Y') }}){% endif %}
+    </p>
+    <p class="text">{{ q.text }}</p>
+    {% if order %}<p><a href="{{ url_for('admin.order', order_id=order.id, _anchor='q-' ~ q.id) }}">Answer on the order page →</a></p>{% endif %}
+  </article>
+{% else %}
+  <p>All questions are answered.</p>
+{% endfor %}
+{% endblock %}

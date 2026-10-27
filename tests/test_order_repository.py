@@ -62,6 +62,17 @@ def check_order_repository(repos, prefix="", email_suffix="@example.test"):
 
     assert repos.food_items.is_ordered(item_id) is True
 
+    from app.models.domain import PaymentStatus
+
+    updated = repos.orders.update_status(older.id, status=OrderStatus.APPROVED)
+    assert (updated.status, updated.payment_status) == (OrderStatus.APPROVED, PaymentStatus.NOT_PAID)
+    updated = repos.orders.update_status(older.id, payment_status=PaymentStatus.DEPOSIT_PAID)
+    assert (updated.status, updated.payment_status) == (OrderStatus.APPROVED, PaymentStatus.DEPOSIT_PAID)
+    assert repos.orders.get(older.id).payment_status == PaymentStatus.DEPOSIT_PAID
+    assert older.id in {o.id for o in repos.orders.list(status=OrderStatus.APPROVED)}
+    with pytest.raises(KeyError):
+        repos.orders.update_status(prefix + "missing", status=OrderStatus.APPROVED)
+
 
 def test_memory_order_repository():
     check_order_repository(memory_repositories())

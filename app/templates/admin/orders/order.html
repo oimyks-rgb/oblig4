@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Order {{ order.reference }} · Admin · Ekte Mat Online{% endblock %}
+{% block content %}
+{% with active='orders' %}{% include "admin/_nav.html" %}{% endwith %}
+<p><a href="{{ url_for('admin.orders') }}">← Orders</a></p>
+<h1>Order {{ order.reference }}</h1>
+<p>
+  <span class="badge status-{{ order.status.value }}">{{ order.status.label }}</span>
+  <span class="badge">Payment: {{ order.payment_status.label }}</span>
+  · Placed {{ order.created_at | local_time }}
+</p>
+
+<div class="order-manage">
+  <section class="panel">
+    <h2>Order status</h2>
+    {% if next_statuses %}
+      <form method="post" action="{{ url_for('admin.change_order_status', order_id=order.id) }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Change from <strong>{{ order.status.label }}</strong> to
+          <select name="status">{% for s in next_statuses %}<option value="{{ s.value }}">{{ s.label }}</option>{% endfor %}</select>
+        </label>
+        <button class="button" type="submit">Save</button>
+      </form>
+    {% else %}
+      <p>{{ order.status.label }} is a final status.</p>
+    {% endif %}
+  </section>
+  <section class="panel">
+    <h2>Payment</h2>
+    <form method="post" action="{{ url_for('admin.change_payment_status', order_id=order.id) }}" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Payment status
+        <select name="payment_status">
+          {% for p in payment_statuses %}<option value="{{ p.value }}" {% if p == order.payment_status %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="button" type="submit">Save</button>
+    </form>
+  </section>
+  <section class="panel">
+    <h2>Customer</h2>
+    {% if customer %}
+      <dl class="facts">
+        <dt>Name</dt><dd>{{ customer.name }}</dd>
+        <dt>E-mail</dt><dd><a href="mailto:{{ customer.email }}">{{ customer.email }}</a></dd>
+        {% if order.phone %}<dt>Phone</dt><dd>{{ order.phone }}</dd>{% endif %}
+      </dl>
+    {% else %}<p>The customer account no longer exists.</p>{% endif %}
+  </section>
+</div>
+
+{% include "orders/_details.html" %}
+
+<section id="questions" class="questions">
+  <h2>Questions from the customer</h2>
+  {% for q in questions %}
+    <article class="question" id="q-{{ q.id }}">
+      <p class="meta">{{ customer.name if customer else 'Customer' }} asked · {{ q.asked_at | local_time }}</p>
+      <p class="text">{{ q.text }}</p>
+      {% if q.answer %}
+        <div class="answer">
+          <p class="meta">Answered · {{ q.answer.answered_at | local_time }}</p>
+          <p class="text">{{ q.answer.text }}</p>
+        </div>
+      {% else %}
+        <p class="waiting">Waiting for an answer.</p>
+      {% endif %}
+      <details {% if not q.answer %}open{% endif %}>
+        <summary>{{ 'Edit answer' if q.answer else 'Answer' }}</summary>
+        <form method="post" action="{{ url_for('admin.answer_question', question_id=q.id) }}" class="form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="order_id" value="{{ order.id }}">
+          <label><span class="visually-hidden">Answer</span>
+            <textarea name="answer" rows="3" maxlength="{{ answer_max }}" required>{{ q.answer.text if q.answer else '' }}</textarea>
+          </label>
+          <div class="form-actions"><button class="button" type="submit">{{ 'Save answer' if q.answer else 'Send answer' }}</button></div>
+        </form>
+      </details>
+    </article>
+  {% else %}
+    <p class="hint">No questions about this order.</p>
+  {% endfor %}
+</section>
+{% endblock %}

@@ -129,6 +129,14 @@ class MemoryOrderRepository(OrderRepository):
             and (event_date is None or o.event_date == event_date)
         )
 
+    def update_status(self, order_id, status=None, payment_status=None):
+        order = self._orders[order_id]
+        if status is not None:
+            order.status = status
+        if payment_status is not None:
+            order.payment_status = payment_status
+        return deepcopy(order)
+
     def includes_item(self, item_id):
         return any(line.food_item_id == item_id for o in self._orders.values() for line in o.lines)
 

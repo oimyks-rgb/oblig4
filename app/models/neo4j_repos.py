@@ -332,6 +332,23 @@ class Neo4jOrderRepository(OrderRepository):
     def list_for_customer(self, customer_id):
         return self._query("WHERE u.id = $customer_id", customer_id=customer_id)
 
+    def update_status(self, order_id, status=None, payment_status=None):
+        records, _, _ = self._driver.execute_query(
+            """
+            MATCH (o:Order {id: $id})
+            SET o.status = coalesce($status, o.status),
+                o.paymentStatus = coalesce($payment_status, o.paymentStatus),
+                o.statusChangedAt = datetime()
+            RETURN o.id AS id
+            """,
+            id=order_id,
+            status=status.value if status else None,
+            payment_status=payment_status.value if payment_status else None,
+        )
+        if not records:
+            raise KeyError(order_id)
+        return self.get(order_id)
+
     def list(self, status=None, event_date=None):
         return self._query(
             "WHERE ($status IS NULL OR o.status = $status) "

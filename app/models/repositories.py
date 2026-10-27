@@ -10,7 +10,16 @@ from typing import Optional
 
 from datetime import date
 
-from .domain import Answer, EventCategory, FoodItem, Order, OrderStatus, Question, User
+from .domain import (
+    Answer,
+    EventCategory,
+    FoodItem,
+    Order,
+    OrderStatus,
+    PaymentStatus,
+    Question,
+    User,
+)
 from .images import ImageStore
 
 
@@ -74,6 +83,17 @@ class OrderRepository(ABC):
         self, status: Optional[OrderStatus] = None, event_date: Optional[date] = None
     ) -> list[Order]:
         """All orders, newest first, optionally filtered (for the admin order list, A3)."""
+
+    @abstractmethod
+    def update_status(
+        self,
+        order_id: str,
+        status: Optional[OrderStatus] = None,
+        payment_status: Optional[PaymentStatus] = None,
+    ) -> Order:
+        """Change the order and/or payment status (A3). Raises KeyError for an unknown order.
+
+        The rules for which changes are allowed live in order_status.py, not here."""
 
 
 class QuestionRepository(ABC):

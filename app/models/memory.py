@@ -5,12 +5,13 @@ from copy import deepcopy
 from dataclasses import replace
 from typing import Optional
 
-from .domain import EventCategory, FoodItem, Order, User
+from .domain import EventCategory, FoodItem, Order, Question, User
 from .images import ImageStore
 from .repositories import (
     DuplicateReference,
     FoodItemRepository,
     OrderRepository,
+    QuestionRepository,
     Repositories,
     UserRepository,
 )
@@ -132,6 +133,32 @@ class MemoryOrderRepository(OrderRepository):
         return any(line.food_item_id == item_id for o in self._orders.values() for line in o.lines)
 
 
+class MemoryQuestionRepository(QuestionRepository):
+    def __init__(self):
+        self._questions: dict[str, Question] = {}
+
+    def _oldest_first(self, questions):
+        return [deepcopy(q) for q in sorted(questions, key=lambda q: q.asked_at)]
+
+    def add(self, question):
+        self._questions[question.id] = deepcopy(question)
+        return deepcopy(question)
+
+    def list_for_order(self, order_id):
+        return self._oldest_first(q for q in self._questions.values() if q.order_id == order_id)
+
+    def list_for_customer(self, customer_id):
+        return self._oldest_first(q for q in self._questions.values() if q.customer_id == customer_id)
+
+    def answer(self, question_id, answer):
+        question = self._questions[question_id]
+        question.answer = deepcopy(answer)
+        return deepcopy(question)
+
+    def list_unanswered(self):
+        return self._oldest_first(q for q in self._questions.values() if q.answer is None)
+
+
 def memory_repositories(images: ImageStore | None = None) -> Repositories:
     orders = MemoryOrderRepository()
     return Repositories(
@@ -139,4 +166,5 @@ def memory_repositories(images: ImageStore | None = None) -> Repositories:
         users=MemoryUserRepository(),
         images=images or MemoryImageStore(),
         orders=orders,
+        questions=MemoryQuestionRepository(),
     )

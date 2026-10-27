@@ -10,6 +10,7 @@ import argparse
 import os
 import sys
 from dataclasses import replace
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from werkzeug.security import generate_password_hash
@@ -17,9 +18,10 @@ from werkzeug.security import generate_password_hash
 from app import create_app
 from app.models import repos
 from app.models.domain import Allergen as A
+from app.models.domain import EventCategory
 from app.models.domain import DietaryLabel as D
 from app.models.domain import EventCategory as E
-from app.models.domain import FoodItem, Role, User
+from app.models.domain import Answer, FoodItem, GuestGroup, Order, OrderLine, Question, Role, User
 from app.models.images import image_name
 from app.models.neo4j_db import create_driver, ensure_schema, reset_database
 
@@ -82,6 +84,51 @@ def attach_seed_images(repositories, folder: Path = SEED_IMAGES) -> int:
     return count
 
 
+DEMO_ORDER_ID = "seed-order-1"
+
+
+def seed_demo_order(repositories, today: date | None = None) -> bool:
+    """One order for Kari with an answered question, so C4/C5 can be seen before A4 exists.
+
+    Returns True if it was created, False if it already exists or users are missing.
+    """
+    today = today or date.today()
+    kari = repositories.users.get_by_email("kari.nordmann@ektemat.test")
+    admin = repositories.users.get_by_email("admin@ektemat.test")
+    soup = repositories.food_items.get("seed-fiskesuppe")
+    cake = repositories.food_items.get("seed-kransekake")
+    if repositories.orders.get(DEMO_ORDER_ID) or not (kari and admin and soup and cake):
+        return False
+    now = datetime.now(timezone.utc)
+    order = repositories.orders.add(
+        Order(
+            id=DEMO_ORDER_ID,
+            reference="EM-DEMO01",
+            customer_id=kari.id,
+            created_at=now - timedelta(days=2),
+            event_date=today + timedelta(days=30),
+            guest_count=15,
+            delivery_street="Strandkaien 2",
+            delivery_postcode="5013",
+            delivery_city="Bergen",
+            lines=[
+                OrderLine(soup.id, soup.name, soup.price_nok, 15),
+                OrderLine(cake.id, cake.name, cake.price_nok, 1),
+            ],
+            guest_groups=[GuestGroup(1, "celery allergy")],
+            event_category=EventCategory.CONFIRMATION,
+        )
+    )
+    question = repositories.questions.add(
+        Question("seed-question-1", order.id, kari.id, "Can the fish soup be made without celery?", now - timedelta(days=1))
+    )
+    repositories.questions.answer(
+        question.id,
+        Answer("Yes, we make a separate batch without celery for that guest and label it.", now, admin.id),
+    )
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--reset", action="store_true", help="delete all data before seeding")
@@ -117,8 +164,12 @@ def main() -> int:
         for user_id, email, name, role, password_var in USERS:
             if not users.get_by_email(email):
                 users.add(User(user_id, email, name, generate_password_hash(os.environ[password_var]), role))
+        demo = seed_demo_order(repos())
 
-    print(f"Added {added} of {len(FOOD_ITEMS)} sample food items, {pictures} pictures; {len(USERS)} users checked.")
+    print(
+        f"Added {added} of {len(FOOD_ITEMS)} sample food items, {pictures} pictures; "
+        f"{len(USERS)} users checked; demo order {'created' if demo else 'already there'}."
+    )
     return 0
 
 

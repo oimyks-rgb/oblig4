@@ -18,6 +18,7 @@ _CONSTRAINTS = [
     "FOR (c:EventCategory) REQUIRE c.code IS UNIQUE",
     "CREATE CONSTRAINT order_id IF NOT EXISTS FOR (o:Order) REQUIRE o.id IS UNIQUE",
     "CREATE CONSTRAINT order_reference IF NOT EXISTS FOR (o:Order) REQUIRE o.reference IS UNIQUE",
+    "CREATE CONSTRAINT question_id IF NOT EXISTS FOR (q:Question) REQUIRE q.id IS UNIQUE",
 ]
 
 

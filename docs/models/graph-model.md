@@ -50,11 +50,15 @@ graph LR
 - `GuestGroup` stores a count and a note, such as "2: nut allergy", but never guest names (US-36, GDPR art. 9).
 - Constraints: `Order.id` and `Order.reference` are unique.
 
-## Planned extension
+## Questions and answers (C5, A4)
 
-For C5 and A4:
+```mermaid
+graph LR
+  C["User (customer)"] -- ASKED --> Q["Question<br/>id, text, askedAt"]
+  Q -- ABOUT --> O["Order"]
+  S["User (staff)"] -- WROTE --> A["Answer<br/>text, answeredAt"]
+  A -- ANSWERS --> Q
+```
 
-```
-(:User)-[:ASKED]->(:Question {text, askedAt})-[:ABOUT]->(:Order)
-(:Question)<-[:ANSWERS]-(:Answer {text, answeredAt})
-```
+- A question has at most one answer. Answering again replaces it (`QuestionRepository.answer`).
+- Constraint: `Question.id` is unique.

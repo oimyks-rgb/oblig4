@@ -83,6 +83,21 @@ class OrderStatus(str, Enum):
     def label(self) -> str:
         return self.value.replace("_", " ").capitalize()
 
+    @property
+    def description(self) -> str:
+        """What the status means, in words for customers (C4)."""
+        return _ORDER_STATUS_DESCRIPTIONS[self]
+
+
+_ORDER_STATUS_DESCRIPTIONS = {
+    OrderStatus.SUBMITTED: "Ekte Mat has received your order and will review it.",
+    OrderStatus.APPROVED: "Ekte Mat has approved your order.",
+    OrderStatus.IN_PREPARATION: "The kitchen is preparing your food.",
+    OrderStatus.DELIVERED: "Your food has been delivered.",
+    OrderStatus.REJECTED: "Ekte Mat could not take this order.",
+    OrderStatus.CANCELLED: "The order has been cancelled.",
+}
+
 
 class PaymentStatus(str, Enum):
     NOT_PAID = "not_paid"
@@ -179,3 +194,26 @@ class Order:
     @property
     def delivery_address(self) -> str:
         return f"{self.delivery_street}, {self.delivery_postcode} {self.delivery_city}"
+
+
+@dataclass
+class Answer:
+    text: str
+    answered_at: datetime
+    answered_by_id: str  # a staff user
+
+
+@dataclass
+class Question:
+    """A customer's question about one of their orders (C5), answered by staff (A4)."""
+
+    id: str
+    order_id: str
+    customer_id: str
+    text: str
+    asked_at: datetime
+    answer: Optional[Answer] = None
+
+    @property
+    def is_answered(self) -> bool:
+        return self.answer is not None

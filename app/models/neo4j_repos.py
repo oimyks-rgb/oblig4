@@ -6,6 +6,8 @@ Graph model (see docs/models/graph-model.md):
   (:User {id, email, name, passwordHash, role})
   (:User)-[:PLACED]->(:Order)-[:INCLUDES {quantity, unitPriceNok, name, position}]->(:FoodItem)
   (:Order)-[:HAS_GUEST_GROUP]->(:GuestGroup {guestCount, note, position})
+  (:User)-[:ASKED]->(:Question {id, text, askedAt})-[:ABOUT]->(:Order)
+  (:User)-[:WROTE]->(:Answer {text, answeredAt})-[:ANSWERS]->(:Question)
 """
 
 from typing import Optional
@@ -15,6 +17,7 @@ from neo4j.exceptions import ConstraintError
 
 from .domain import (
     Allergen,
+    Answer,
     DietaryLabel,
     EventCategory,
     FoodItem,
@@ -23,6 +26,7 @@ from .domain import (
     OrderLine,
     OrderStatus,
     PaymentStatus,
+    Question,
     Role,
     User,
 )
@@ -31,6 +35,7 @@ from .repositories import (
     DuplicateReference,
     FoodItemRepository,
     OrderRepository,
+    QuestionRepository,
     Repositories,
     UserRepository,
 )
@@ -336,10 +341,95 @@ class Neo4jOrderRepository(OrderRepository):
         )
 
 
+_QUESTION_RETURN = """
+OPTIONAL MATCH (staff:User)-[:WROTE]->(a:Answer)-[:ANSWERS]->(q)
+RETURN q, customerId, orderId, a, staff.id AS staffId
+ORDER BY q.askedAt
+"""
+
+
+def _to_question(record) -> Question:
+    q, a = record["q"], record["a"]
+    return Question(
+        id=q["id"],
+        order_id=record["orderId"],
+        customer_id=record["customerId"],
+        text=q["text"],
+        asked_at=_native(q["askedAt"]),
+        answer=Answer(a["text"], _native(a["answeredAt"]), record["staffId"]) if a else None,
+    )
+
+
+class Neo4jQuestionRepository(QuestionRepository):
+    def __init__(self, driver: Driver):
+        self._driver = driver
+
+    def add(self, question):
+        records, _, _ = self._driver.execute_query(
+            """
+            MATCH (u:User {id: $customer_id}), (o:Order {id: $order_id})
+            CREATE (u)-[:ASKED]->(q:Question {id: $id, text: $text, askedAt: $asked_at})-[:ABOUT]->(o)
+            RETURN q.id AS id
+            """,
+            customer_id=question.customer_id,
+            order_id=question.order_id,
+            id=question.id,
+            text=question.text,
+            asked_at=question.asked_at,
+        )
+        if not records:
+            raise KeyError("Unknown customer or order")
+        return self._get(question.id)
+
+    def _query(self, where: str, **params) -> list[Question]:
+        records, _, _ = self._driver.execute_query(
+            "MATCH (u:User)-[:ASKED]->(q:Question)-[:ABOUT]->(o:Order) "
+            + where
+            + " WITH q, u.id AS customerId, o.id AS orderId "
+            + _QUESTION_RETURN,
+            **params,
+        )
+        return [_to_question(r) for r in records]
+
+    def _get(self, question_id):
+        found = self._query("WHERE q.id = $id", id=question_id)
+        return found[0] if found else None
+
+    def list_for_order(self, order_id):
+        return self._query("WHERE o.id = $order_id", order_id=order_id)
+
+    def list_for_customer(self, customer_id):
+        return self._query("WHERE u.id = $customer_id", customer_id=customer_id)
+
+    def answer(self, question_id, answer):
+        records, _, _ = self._driver.execute_query(
+            """
+            MATCH (q:Question {id: $id})
+            OPTIONAL MATCH (old:Answer)-[:ANSWERS]->(q)
+            DETACH DELETE old
+            WITH DISTINCT q
+            MATCH (staff:User {id: $staff_id})
+            CREATE (staff)-[:WROTE]->(:Answer {text: $text, answeredAt: $answered_at})-[:ANSWERS]->(q)
+            RETURN q.id AS id
+            """,
+            id=question_id,
+            staff_id=answer.answered_by_id,
+            text=answer.text,
+            answered_at=answer.answered_at,
+        )
+        if not records:
+            raise KeyError(question_id)
+        return self._get(question_id)
+
+    def list_unanswered(self):
+        return self._query("WHERE NOT EXISTS { (:Answer)-[:ANSWERS]->(q) }")
+
+
 def neo4j_repositories(driver: Driver, images: ImageStore) -> Repositories:
     return Repositories(
         food_items=Neo4jFoodItemRepository(driver),
         users=Neo4jUserRepository(driver),
         images=images,
         orders=Neo4jOrderRepository(driver),
+        questions=Neo4jQuestionRepository(driver),
     )

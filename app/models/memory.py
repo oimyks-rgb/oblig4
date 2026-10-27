@@ -5,14 +5,21 @@ from copy import deepcopy
 from dataclasses import replace
 from typing import Optional
 
-from .domain import EventCategory, FoodItem, User
+from .domain import EventCategory, FoodItem, Order, User
 from .images import ImageStore
-from .repositories import FoodItemRepository, Repositories, UserRepository
+from .repositories import (
+    DuplicateReference,
+    FoodItemRepository,
+    OrderRepository,
+    Repositories,
+    UserRepository,
+)
 
 
 class MemoryFoodItemRepository(FoodItemRepository):
-    def __init__(self):
+    def __init__(self, orders: "MemoryOrderRepository | None" = None):
         self._items: dict[str, FoodItem] = {}
+        self._orders = orders
 
     def list(self, published_only=False, category: Optional[EventCategory] = None):
         items = [
@@ -41,6 +48,9 @@ class MemoryFoodItemRepository(FoodItemRepository):
 
     def delete(self, item_id):
         return self._items.pop(item_id, None) is not None
+
+    def is_ordered(self, item_id):
+        return self._orders is not None and self._orders.includes_item(item_id)
 
 
 class MemoryUserRepository(UserRepository):
@@ -90,9 +100,43 @@ class MemoryImageStore(ImageStore):
         return len(old)
 
 
+class MemoryOrderRepository(OrderRepository):
+    def __init__(self):
+        self._orders: dict[str, Order] = {}
+
+    def add(self, order):
+        if any(o.reference == order.reference for o in self._orders.values()):
+            raise DuplicateReference(order.reference)
+        self._orders[order.id] = deepcopy(order)
+        return deepcopy(order)
+
+    def get(self, order_id):
+        order = self._orders.get(order_id)
+        return deepcopy(order) if order else None
+
+    def _newest_first(self, orders):
+        return [deepcopy(o) for o in sorted(orders, key=lambda o: o.created_at, reverse=True)]
+
+    def list_for_customer(self, customer_id):
+        return self._newest_first(o for o in self._orders.values() if o.customer_id == customer_id)
+
+    def list(self, status=None, event_date=None):
+        return self._newest_first(
+            o
+            for o in self._orders.values()
+            if (status is None or o.status == status)
+            and (event_date is None or o.event_date == event_date)
+        )
+
+    def includes_item(self, item_id):
+        return any(line.food_item_id == item_id for o in self._orders.values() for line in o.lines)
+
+
 def memory_repositories(images: ImageStore | None = None) -> Repositories:
+    orders = MemoryOrderRepository()
     return Repositories(
-        food_items=MemoryFoodItemRepository(),
+        food_items=MemoryFoodItemRepository(orders),
         users=MemoryUserRepository(),
         images=images or MemoryImageStore(),
+        orders=orders,
     )

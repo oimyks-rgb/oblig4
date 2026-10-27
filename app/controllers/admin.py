@@ -106,9 +106,10 @@ def toggle_published(item_id):
 @bp.route("/food-items/<item_id>/delete", methods=["POST"])
 @admin_required
 def delete_food_item(item_id):
-    # TODO(C3): once orders exist, block deleting items that have been ordered
-    # and ask staff to unpublish them instead.
     item = _get_item_or_404(item_id)
+    if repos().food_items.is_ordered(item_id):
+        flash(f"{item.name} has been ordered, so it can't be deleted. Unpublish it instead.", "error")
+        return redirect(url_for("admin.food_items"))
     repos().food_items.delete(item_id)
     _delete_if_unused(item.image_filename)
     flash(f"Deleted {item.name}.", "success")

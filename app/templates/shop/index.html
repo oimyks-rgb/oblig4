@@ -19,6 +19,14 @@
             {% if item.dietary_labels %}
               <p class="tags">{% for d in item.dietary_labels %}<span class="tag">{{ d.label }}</span>{% endfor %}</p>
             {% endif %}
+            <form class="add-to-cart" method="post" action="{{ url_for('shop.cart_add') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="item_id" value="{{ item.id }}">
+              <label><span class="visually-hidden">Portions of {{ item.name }}</span>
+                <input type="number" name="quantity" value="{{ item.min_order_qty }}" min="{{ item.min_order_qty }}" max="10000" step="1" inputmode="numeric">
+              </label>
+              <button class="button" type="submit">Add to cart</button>
+            </form>
           </div>
         </article>
       {% endfor %}

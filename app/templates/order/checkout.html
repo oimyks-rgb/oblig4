@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Checkout · Ekte Mat Online{% endblock %}
+{% macro field_error(name) %}{% if errors.get(name) %}<span class="error">{{ errors[name] }}</span>{% endif %}{% endmacro %}
+{% block content %}
+<h1>Checkout</h1>
+{% if errors %}<p class="flash flash-error" role="alert">Please fix the fields marked below.</p>{% endif %}
+{% if errors.cart %}<p class="error">{{ errors.cart }} <a href="{{ url_for('shop.cart') }}">Go to cart</a></p>{% endif %}
+
+<section class="panel summary">
+  <h2>Your order</h2>
+  <ul class="plain">
+    {% for line in lines %}<li>{{ line.quantity }} × {{ line.name }} <span class="num">{{ line.line_total | nok }}</span></li>{% endfor %}
+  </ul>
+  <p><strong>Estimated total: {{ total | nok }}</strong> · <a href="{{ url_for('shop.cart') }}">Change cart</a></p>
+</section>
+
+<form method="post" class="form" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <h2>Event</h2>
+  <div class="row">
+    <label class="{% if errors.event_date %}has-error{% endif %}">Event date
+      <input type="date" name="event_date" min="{{ earliest }}" value="{{ form.get('event_date', '') }}" required>
+      <span class="hint">At least {{ min_lead_days }} days from today.</span>
+      {{ field_error('event_date') }}
+    </label>
+    <label class="{% if errors.guest_count %}has-error{% endif %}">Number of guests
+      <input type="number" name="guest_count" min="1" max="2000" step="1" inputmode="numeric" value="{{ form.get('guest_count', '') }}" required>
+      {{ field_error('guest_count') }}
+    </label>
+    <label class="{% if errors.event_category %}has-error{% endif %}">Type of event (optional)
+      <select name="event_category">
+        <option value="">Choose…</option>
+        {% for c in categories %}<option value="{{ c.value }}" {% if form.get('event_category') == c.value %}selected{% endif %}>{{ c.label }}</option>{% endfor %}
+      </select>
+      {{ field_error('event_category') }}
+    </label>
+  </div>
+
+  <h2>Delivery</h2>
+  <label class="{% if errors.delivery_street %}has-error{% endif %}">Street address
+    <input type="text" name="delivery_street" value="{{ form.get('delivery_street', '') }}" required autocomplete="street-address">
+    {{ field_error('delivery_street') }}
+  </label>
+  <div class="row">
+    <label class="{% if errors.delivery_postcode %}has-error{% endif %}">Postcode
+      <input type="text" name="delivery_postcode" inputmode="numeric" maxlength="4" value="{{ form.get('delivery_postcode', '') }}" required autocomplete="postal-code">
+      {{ field_error('delivery_postcode') }}
+    </label>
+    <label class="{% if errors.delivery_city %}has-error{% endif %}">Town or city
+      <input type="text" name="delivery_city" value="{{ form.get('delivery_city', '') }}" required autocomplete="address-level2">
+      {{ field_error('delivery_city') }}
+    </label>
+    <label class="{% if errors.phone %}has-error{% endif %}">Phone (optional)
+      <input type="tel" name="phone" value="{{ form.get('phone', '') }}" autocomplete="tel">
+      {{ field_error('phone') }}
+    </label>
+  </div>
+
+  <fieldset class="checks{% if errors.guest_groups %} has-error{% endif %}">
+    <legend>Guest groups with allergies or special diets</legend>
+    <p class="hint">Tell us how many guests need each diet, e.g. “2” and “nut allergy”. Please don't write guests' names.</p>
+    <div id="guest-groups">
+      {% for count, note in group_rows %}
+        <div class="group-row">
+          <label>Guests <input type="number" name="group_count" min="1" step="1" inputmode="numeric" value="{{ count }}"></label>
+          <label class="grow">Allergy or diet <input type="text" name="group_note" maxlength="200" value="{{ note }}"></label>
+        </div>
+      {% endfor %}
+    </div>
+    <button class="link" type="button" id="add-group">+ Add another group</button>
+    {{ field_error('guest_groups') }}
+  </fieldset>
+
+  <label class="{% if errors.comment %}has-error{% endif %}">Comment (optional)
+    <textarea name="comment" rows="3" maxlength="1000">{{ form.get('comment', '') }}</textarea>
+    {{ field_error('comment') }}
+  </label>
+
+  <p class="hint">No payment now. Ekte Mat will confirm your order and send payment details.</p>
+  <div class="form-actions">
+    <button class="button" type="submit">Submit order</button>
+    <a href="{{ url_for('shop.cart') }}">Back to cart</a>
+  </div>
+</form>
+<script>
+  document.getElementById("add-group").addEventListener("click", () => {
+    const rows = document.getElementById("guest-groups");
+    const copy = rows.lastElementChild.cloneNode(true);
+    copy.querySelectorAll("input").forEach((input) => (input.value = ""));
+    rows.appendChild(copy);
+    copy.querySelector("input").focus();
+  });
+</script>
+{% endblock %}

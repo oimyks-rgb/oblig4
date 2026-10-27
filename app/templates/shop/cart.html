@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Cart · Ekte Mat Online{% endblock %}
+{% block content %}
+<h1>Your cart</h1>
+{% if lines %}
+<form method="post" action="{{ url_for('shop.cart_update') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="table-wrap">
+  <table class="table cart-table">
+    <thead><tr><th>Item</th><th class="num">Price</th><th>Portions</th><th class="num">Line total</th><th></th></tr></thead>
+    <tbody>
+    {% for line in lines %}
+      <tr>
+        <td>{{ line.name }}</td>
+        <td class="num">{{ line.unit_price_nok | nok }}</td>
+        <td>
+          <input class="qty{% if errors.get(line.food_item_id) %} has-error{% endif %}" type="number" name="quantity-{{ line.food_item_id }}"
+                 value="{{ line.quantity }}" min="0" max="10000" step="1" inputmode="numeric"
+                 aria-label="Portions of {{ line.name }}">
+          <span class="hint">min. {{ minimums.get(line.food_item_id, 1) }}</span>
+          {% if errors.get(line.food_item_id) %}<p class="error">{{ errors[line.food_item_id] }}</p>{% endif %}
+        </td>
+        <td class="num">{{ line.line_total | nok }}</td>
+        <td><button class="link danger" type="submit" form="remove-{{ line.food_item_id }}">Remove</button></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><td colspan="5" class="total-row">Estimated total <strong>{{ total | nok }}</strong></td></tr>
+    </tfoot>
+  </table>
+  </div>
+  <p class="hint">Prices are estimates until Ekte Mat approves your order. Set a quantity to 0 to remove an item.</p>
+  <div class="form-actions">
+    <button class="link" type="submit">Update cart</button>
+    <a class="button" href="{{ url_for('order.checkout') }}">Go to checkout</a>
+  </div>
+</form>
+{% for line in lines %}
+  <form id="remove-{{ line.food_item_id }}" method="post" action="{{ url_for('shop.cart_remove') }}" hidden>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="item_id" value="{{ line.food_item_id }}">
+  </form>
+{% endfor %}
+{% else %}
+  <p>Your cart is empty. <a href="{{ url_for('shop.index') }}">See the menu</a>.</p>
+{% endif %}
+{% endblock %}

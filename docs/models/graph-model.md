@@ -37,14 +37,24 @@ Allergens and event categories are nodes rather than list properties, because th
 
 Dietary labels are only displayed, so they stay a simple property.
 
+## Orders (C2/C3)
+
+```mermaid
+graph LR
+  U["User"] -- PLACED --> O["Order<br/>id, reference, createdAt,<br/>eventDate (date), eventCategory,<br/>guestCount, deliveryStreet,<br/>deliveryPostcode, deliveryCity,<br/>phone, comment, status, paymentStatus"]
+  O -- "INCLUDES<br/>{quantity, unitPriceNok, name, position}" --> F["FoodItem"]
+  O -- HAS_GUEST_GROUP --> G["GuestGroup<br/>guestCount, note, position"]
+```
+
+- `INCLUDES` copies the name and price when the order is placed, so changing the menu later doesn't change old orders. A food item that has been ordered can't be deleted, only unpublished.
+- `GuestGroup` stores a count and a note, such as "2: nut allergy", but never guest names (US-36, GDPR art. 9).
+- Constraints: `Order.id` and `Order.reference` are unique.
+
 ## Planned extension
 
-For C2–C5 and A3–A4:
+For C5 and A4:
 
 ```
-(:User)-[:PLACED]->(:Order {status, paymentStatus, eventDate, guestCount, deliveryAddress})
-(:Order)-[:INCLUDES {quantity, unitPriceNok}]->(:FoodItem)
-(:Order)-[:HAS_DIET]->(:GuestGroupDiet {guestCount, diet, note})
 (:User)-[:ASKED]->(:Question {text, askedAt})-[:ABOUT]->(:Order)
 (:Question)<-[:ANSWERS]-(:Answer {text, answeredAt})
 ```

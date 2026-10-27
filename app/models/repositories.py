@@ -8,7 +8,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional
 
-from .domain import EventCategory, FoodItem, User
+from datetime import date
+
+from .domain import EventCategory, FoodItem, Order, OrderStatus, User
 from .images import ImageStore
 
 
@@ -33,6 +35,10 @@ class FoodItemRepository(ABC):
     def delete(self, item_id: str) -> bool:
         """Return True if an item was deleted."""
 
+    @abstractmethod
+    def is_ordered(self, item_id: str) -> bool:
+        """True if any order includes this item (then it must not be deleted)."""
+
 
 class UserRepository(ABC):
     @abstractmethod
@@ -47,8 +53,32 @@ class UserRepository(ABC):
         """Raises ValueError if the e-mail is already registered."""
 
 
+class DuplicateReference(ValueError):
+    """Another order already has this reference."""
+
+
+class OrderRepository(ABC):
+    @abstractmethod
+    def add(self, order: Order) -> Order:
+        """Store a new order. Raises DuplicateReference if the reference is taken."""
+
+    @abstractmethod
+    def get(self, order_id: str) -> Optional[Order]: ...
+
+    @abstractmethod
+    def list_for_customer(self, customer_id: str) -> list[Order]:
+        """The customer's orders, newest first."""
+
+    @abstractmethod
+    def list(
+        self, status: Optional[OrderStatus] = None, event_date: Optional[date] = None
+    ) -> list[Order]:
+        """All orders, newest first, optionally filtered (for the admin order list, A3)."""
+
+
 @dataclass
 class Repositories:
     food_items: FoodItemRepository
     users: UserRepository
     images: ImageStore
+    orders: OrderRepository

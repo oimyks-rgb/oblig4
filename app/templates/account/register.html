@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Create account · Ekte Mat Online{% endblock %}
+{% block content %}
+<h1>Create an account</h1>
+<form method="post" class="form narrow" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  <label class="{% if errors.name %}has-error{% endif %}">Name
+    <input type="text" name="name" value="{{ form.get('name', '') }}" required autocomplete="name">
+    {% if errors.name %}<span class="error">{{ errors.name }}</span>{% endif %}
+  </label>
+  <label class="{% if errors.email %}has-error{% endif %}">E-mail
+    <input type="email" name="email" value="{{ form.get('email', '') }}" required autocomplete="email">
+    {% if errors.email %}<span class="error">{{ errors.email }}</span>{% endif %}
+  </label>
+  <label class="{% if errors.password %}has-error{% endif %}">Password (at least 10 characters)
+    <input type="password" name="password" required minlength="10" autocomplete="new-password">
+    {% if errors.password %}<span class="error">{{ errors.password }}</span>{% endif %}
+  </label>
+  <label class="{% if errors.confirm %}has-error{% endif %}">Repeat password
+    <input type="password" name="confirm" required autocomplete="new-password">
+    {% if errors.confirm %}<span class="error">{{ errors.confirm }}</span>{% endif %}
+  </label>
+  <button class="button" type="submit">Create account</button>
+</form>
+<p>Already have an account? <a href="{{ url_for('account.login', next=next) if next else url_for('account.login') }}">Log in</a></p>
+{% endblock %}

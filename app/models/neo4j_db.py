@@ -16,6 +16,8 @@ _CONSTRAINTS = [
     "CREATE CONSTRAINT allergen_code IF NOT EXISTS FOR (a:Allergen) REQUIRE a.code IS UNIQUE",
     "CREATE CONSTRAINT event_category_code IF NOT EXISTS "
     "FOR (c:EventCategory) REQUIRE c.code IS UNIQUE",
+    "CREATE CONSTRAINT order_id IF NOT EXISTS FOR (o:Order) REQUIRE o.id IS UNIQUE",
+    "CREATE CONSTRAINT order_reference IF NOT EXISTS FOR (o:Order) REQUIRE o.reference IS UNIQUE",
 ]
 
 

@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Order {{ order.reference }} · Ekte Mat Online{% endblock %}
 {% block content %}
+<p><a href="{{ url_for('account.index') }}">← My orders</a></p>
 <h1>Order {{ order.reference }}</h1>
 <p>
-  <span class="badge badge-on">{{ order.status.label }}</span>
+  <span class="badge status-{{ order.status.value }}">{{ order.status.label }}</span>
   <span class="badge">Payment: {{ order.payment_status.label }}</span>
   · Placed {{ order.created_at | local_time }}
 </p>
+<p class="hint">{{ order.status.description }}</p>
 
 <div class="order-details">
   <section class="panel">
@@ -40,4 +42,36 @@
 </table>
 </div>
 <p class="hint">No payment yet. Ekte Mat will review the order and confirm it.</p>
+
+<section id="questions" class="questions">
+  <h2>Questions about this order</h2>
+  {% for q in questions %}
+    <article class="question">
+      <p class="meta">You asked · {{ q.asked_at | local_time }}</p>
+      <p class="text">{{ q.text }}</p>
+      {% if q.answer %}
+        <div class="answer">
+          <p class="meta">Ekte Mat answered · {{ q.answer.answered_at | local_time }}</p>
+          <p class="text">{{ q.answer.text }}</p>
+        </div>
+      {% else %}
+        <p class="waiting">Waiting for an answer from Ekte Mat.</p>
+      {% endif %}
+    </article>
+  {% else %}
+    <p class="hint">No questions yet.</p>
+  {% endfor %}
+
+  {% if can_ask %}
+  <form method="post" action="{{ url_for('account.ask_question', order_id=order.id) }}" class="form" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="{% if errors.text %}has-error{% endif %}">Ask a question
+      <textarea name="text" rows="3" maxlength="{{ text_max }}" required>{{ question_text }}</textarea>
+      <span class="hint">Don't include guests' names or health details beyond what the kitchen needs.</span>
+      {% if errors.text %}<span class="error">{{ errors.text }}</span>{% endif %}
+    </label>
+    <div class="form-actions"><button class="button" type="submit">Send question</button></div>
+  </form>
+  {% endif %}
+</section>
 {% endblock %}

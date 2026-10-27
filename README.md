@@ -60,7 +60,9 @@ flask --app app run --debug --port 5001
 
 Open <http://localhost:5001>. Port 5000 is taken by AirPlay on macOS.
 
-Customers can register at `/account/register`, fill a cart from the menu and place an order at `/order/checkout`. No payment is involved.
+Customers can register at `/account/register`, fill a cart from the menu and place an order at `/order/checkout`. No payment is involved. Under My orders (`/account/`) they see their orders with status and payment status, and they can ask questions about each order.
+
+The seed creates a demo order `EM-DEMO01` for `kari.nordmann@ektemat.test` with an answered question.
 
 The admin panel is at `/admin/`. Log in as `admin@ektemat.test` with the `SEED_ADMIN_PASSWORD` from `.env`. The test customers use `SEED_CUSTOMER_PASSWORD`.
 

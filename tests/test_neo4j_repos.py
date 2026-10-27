@@ -35,6 +35,10 @@ def driver():
 def cleanup(driver):
     yield
     driver.execute_query(
+        "MATCH (q:Question) WHERE q.id STARTS WITH 'test-' "
+        "OPTIONAL MATCH (a:Answer)-[:ANSWERS]->(q) DETACH DELETE q, a"
+    )
+    driver.execute_query(
         "MATCH (o:Order) WHERE o.id STARTS WITH 'test-' "
         "OPTIONAL MATCH (o)-[:HAS_GUEST_GROUP]->(g:GuestGroup) DETACH DELETE o, g"
     )
@@ -67,5 +71,15 @@ def test_neo4j_order_repository(driver):
     from tests.test_order_repository import check_order_repository
 
     check_order_repository(
+        neo4j_repositories(driver, MemoryImageStore()), prefix="test-", email_suffix="@test.invalid"
+    )
+
+
+def test_neo4j_question_repository(driver):
+    from app.models.memory import MemoryImageStore
+    from app.models.neo4j_repos import neo4j_repositories
+    from tests.test_question_repository import check_question_repository
+
+    check_question_repository(
         neo4j_repositories(driver, MemoryImageStore()), prefix="test-", email_suffix="@test.invalid"
     )

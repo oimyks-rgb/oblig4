@@ -6,6 +6,9 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 
 from ..models import repos
 from ..models.accounts import authenticate, register_customer
+from ..models.domain import OrderStatus
+from ..models.questions import TEXT_MAX as QUESTION_MAX
+from ..models.questions import new_question, parse_question
 from .auth import login_required
 
 bp = Blueprint("account", __name__, url_prefix="/account")
@@ -33,7 +36,15 @@ def _start_session(user):
 @bp.route("/")
 @login_required
 def index():
-    return render_template("account/index.html")
+    """My orders (C4): the customer's orders with status, payment status and questions."""
+    orders = repos().orders.list_for_customer(g.user.id)
+    questions = {}
+    for question in repos().questions.list_for_customer(g.user.id):
+        asked, answered = questions.get(question.order_id, (0, 0))
+        questions[question.order_id] = (asked + 1, answered + question.is_answered)
+    return render_template(
+        "account/index.html", orders=orders, questions=questions, statuses=list(OrderStatus)
+    )
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -73,14 +84,47 @@ def register():
     return render_template("account/register.html", form=form, errors=errors, next=next_url), status
 
 
-@bp.route("/orders/<order_id>")
-@login_required
-def order(order_id):
-    """One order: confirmation after checkout (C3) and detail page for my orders (C4)."""
+def _visible_order_or_404(order_id):
     found = repos().orders.get(order_id)
     if found is None or (found.customer_id != g.user.id and not g.user.is_admin):
         abort(404)  # don't reveal that other customers' orders exist
-    return render_template("account/order.html", order=found)
+    return found
+
+
+def _render_order(found, question_text="", errors=None, status=200):
+    return (
+        render_template(
+            "account/order.html",
+            order=found,
+            questions=repos().questions.list_for_order(found.id),
+            can_ask=found.customer_id == g.user.id,
+            question_text=question_text,
+            errors=errors or {},
+            text_max=QUESTION_MAX,
+        ),
+        status,
+    )
+
+
+@bp.route("/orders/<order_id>")
+@login_required
+def order(order_id):
+    """One order: confirmation after checkout (C3), details for my orders (C4), questions (C5)."""
+    return _render_order(_visible_order_or_404(order_id))
+
+
+@bp.route("/orders/<order_id>/questions", methods=["POST"])
+@login_required
+def ask_question(order_id):
+    found = _visible_order_or_404(order_id)
+    if found.customer_id != g.user.id:
+        abort(404)  # only the customer who placed the order asks about it
+    text, errors = parse_question(request.form.get("text", ""))
+    if errors:
+        return _render_order(found, text, errors, 400)
+    repos().questions.add(new_question(found, g.user, text))
+    flash("Your question was sent. Ekte Mat will answer here.", "success")
+    return redirect(url_for("account.order", order_id=found.id, _anchor="questions"))
 
 
 @bp.route("/logout", methods=["POST"])

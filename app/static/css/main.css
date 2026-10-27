@@ -174,3 +174,28 @@ input.qty.has-error { border-color: #c62828; }
   .cart-table thead th:nth-child(2), .cart-table tbody td:nth-child(2) { display: none; }
   .cart-table th, .cart-table td { padding: 0.5rem 0.3rem; }
 }
+
+/* ---------- my orders and questions (C4, C5) ---------- */
+.orders-table .hint { display: block; font-size: 0.8rem; }
+.status-approved, .status-in_preparation, .status-delivered { background: var(--green-light); color: var(--green); }
+.status-rejected, .status-cancelled { background: #fbe9e7; color: #8a1f11; }
+.status-submitted { background: #fff4d6; color: #6b4e00; }
+.legend { margin-top: 1rem; }
+.legend summary { cursor: pointer; color: var(--muted); }
+.questions { margin-top: 2rem; max-width: 760px; }
+.question { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.75rem; }
+.question .meta { color: var(--muted); font-size: 0.85rem; margin: 0; }
+.question .text { margin: 0.25rem 0 0; white-space: pre-line; }
+.answer { border-left: 3px solid var(--green); padding-left: 0.75rem; margin-top: 0.75rem; }
+.waiting { color: #6b4e00; font-size: 0.9rem; margin: 0.5rem 0 0; }
+.nowrap { white-space: nowrap; }
+@media (max-width: 640px) {
+  /* Narrow screens: each order becomes a card with labelled values */
+  .orders-table thead { display: none; }
+  .orders-table, .orders-table tbody, .orders-table tr, .orders-table td { display: block; width: 100%; }
+  .orders-table tr { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.75rem; padding: 0.25rem 0.5rem; }
+  .orders-table td { display: flex; justify-content: space-between; gap: 1rem; border: 0; padding: 0.3rem 0.25rem; text-align: right; }
+  .orders-table td::before { content: attr(data-label); color: var(--muted); text-align: left; }
+  .orders-table td .hint { display: inline; margin-left: 0.5rem; }
+}
+.form label .hint { font-weight: 400; }

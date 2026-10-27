@@ -10,7 +10,7 @@ from typing import Optional
 
 from datetime import date
 
-from .domain import EventCategory, FoodItem, Order, OrderStatus, User
+from .domain import Answer, EventCategory, FoodItem, Order, OrderStatus, Question, User
 from .images import ImageStore
 
 
@@ -76,9 +76,31 @@ class OrderRepository(ABC):
         """All orders, newest first, optionally filtered (for the admin order list, A3)."""
 
 
+class QuestionRepository(ABC):
+    @abstractmethod
+    def add(self, question: Question) -> Question: ...
+
+    @abstractmethod
+    def list_for_order(self, order_id: str) -> list[Question]:
+        """Questions about one order, oldest first (reads like a conversation)."""
+
+    @abstractmethod
+    def list_for_customer(self, customer_id: str) -> list[Question]:
+        """All questions a customer has asked, oldest first."""
+
+    @abstractmethod
+    def answer(self, question_id: str, answer: Answer) -> Question:
+        """Set or replace the answer. Raises KeyError for an unknown question."""
+
+    @abstractmethod
+    def list_unanswered(self) -> list[Question]:
+        """Questions waiting for staff, oldest first (A4)."""
+
+
 @dataclass
 class Repositories:
     food_items: FoodItemRepository
     users: UserRepository
     images: ImageStore
     orders: OrderRepository
+    questions: QuestionRepository

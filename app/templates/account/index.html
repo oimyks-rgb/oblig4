@@ -2,5 +2,35 @@
 {% block title %}My orders · Ekte Mat Online{% endblock %}
 {% block content %}
 <h1>My orders</h1>
-<p>Log in, my orders and questions (C3–C5) are not built yet.</p>
+{% if orders %}
+<div class="table-wrap">
+<table class="table orders-table">
+  <thead>
+    <tr><th>Order</th><th>Event date</th><th>Status</th><th>Payment</th><th class="num">Total</th><th>Questions</th></tr>
+  </thead>
+  <tbody>
+  {% for order in orders %}
+    {% set asked, answered = questions.get(order.id, (0, 0)) %}
+    <tr>
+      <td data-label="Order"><a class="nowrap" href="{{ url_for('account.order', order_id=order.id) }}">{{ order.reference }}</a>
+        <span class="hint">Placed {{ order.created_at | local_time('%d.%m.%Y') }}</span></td>
+      <td data-label="Event date">{{ order.event_date.strftime('%d.%m.%Y') }}</td>
+      <td data-label="Status"><span class="badge status-{{ order.status.value }}">{{ order.status.label }}</span></td>
+      <td data-label="Payment"><span class="badge">{{ order.payment_status.label }}</span></td>
+      <td data-label="Total" class="num">{{ order.total_nok | nok }}</td>
+      <td data-label="Questions">{% if asked %}{{ asked }} ({{ answered }} answered){% else %}<span class="hint">None</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<details class="legend">
+  <summary>What do the statuses mean?</summary>
+  <dl class="facts">
+    {% for s in statuses %}<dt>{{ s.label }}</dt><dd>{{ s.description }}</dd>{% endfor %}
+  </dl>
+</details>
+{% else %}
+  <p>You have no orders yet. <a href="{{ url_for('shop.index') }}">See the menu</a> to get started.</p>
+{% endif %}
 {% endblock %}

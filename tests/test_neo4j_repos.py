@@ -34,6 +34,10 @@ def driver():
 @pytest.fixture(autouse=True)
 def cleanup(driver):
     yield
+    driver.execute_query(
+        "MATCH (o:Order) WHERE o.id STARTS WITH 'test-' "
+        "OPTIONAL MATCH (o)-[:HAS_GUEST_GROUP]->(g:GuestGroup) DETACH DELETE o, g"
+    )
     driver.execute_query("MATCH (f:FoodItem) WHERE f.id STARTS WITH 'test-' DETACH DELETE f")
     driver.execute_query("MATCH (u:User) WHERE u.email ENDS WITH '@test.invalid' DETACH DELETE u")
 
@@ -55,3 +59,13 @@ def test_cleanup_leaves_no_test_data(driver):
         "MATCH (f:FoodItem) WHERE f.id STARTS WITH 'test-' RETURN count(f) AS n"
     )
     assert records[0]["n"] == 0
+
+
+def test_neo4j_order_repository(driver):
+    from app.models.memory import MemoryImageStore
+    from app.models.neo4j_repos import neo4j_repositories
+    from tests.test_order_repository import check_order_repository
+
+    check_order_repository(
+        neo4j_repositories(driver, MemoryImageStore()), prefix="test-", email_suffix="@test.invalid"
+    )

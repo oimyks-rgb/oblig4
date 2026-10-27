@@ -1,6 +1,7 @@
 """Ekte Mat Online: Flask application factory."""
 
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from flask import Flask
@@ -26,11 +27,17 @@ def create_app(config=None) -> Flask:
 
     from .controllers.account import bp as account_bp
     from .controllers.admin import bp as admin_bp
+    from .controllers.order import bp as order_bp
     from .controllers.shop import bp as shop_bp
 
     app.register_blueprint(shop_bp)
     app.register_blueprint(account_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(order_bp)
+
+    @app.template_filter("local_time")
+    def format_local_time(moment, fmt="%d.%m.%Y %H:%M") -> str:
+        return moment.astimezone(ZoneInfo("Europe/Oslo")).strftime(fmt)
 
     @app.template_filter("nok")
     def format_nok(amount: int) -> str:

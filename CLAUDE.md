@@ -31,9 +31,11 @@ app/
     memory.py        # in-memory implementations for tests
     food_items.py    # business rules: parse_food_item(), publish_errors()
     accounts.py      # authenticate()
+    cart.py          # cart rules: validate_quantity(), cart_lines() (cart = session dict)
+    orders.py        # parse_checkout(), place_order(), MIN_LEAD_DAYS
     images.py        # process_image(), ImageStore (content-hash names), LocalImageStore
     image_generation.py  # ImageGenerator: GeminiImageGenerator, FakeImageGenerator, prompts
-  controllers/       # blueprints: shop (/), account (/account), admin (/admin)
+  controllers/       # blueprints: shop (/ and /cart), account (/account), order (/order), admin (/admin)
     auth.py          # g.user, current_user in templates, @login_required, @admin_required
   templates/         # Jinja2 views, one folder per blueprint; base.html
   static/            # css/, img/, uploads/ (git-ignored)
@@ -49,6 +51,8 @@ Layer rules:
 - Views get plain data from controllers and contain no business logic.
 - Validation and business rules live in the model layer (pattern: `models/food_items.py` returns the object plus a field -> message dict). Controllers only pass `request.form` in and re-render with the errors (status 400).
 - Pictures go through `repos().images` (an `ImageStore`, files in `instance/images/`), and AI pictures through `image_generator()` (None when `IMAGE_GENERATOR` is empty). New pictures are always saved as a draft and previewed before they replace the current one (A2).
+- The cart is `session["cart"]` (`{food_item_id: quantity}`); login and registration keep it. The minimum order applies to the total quantity of an item.
+- Orders copy the item name and price into each line. Ordered food items can't be deleted (`is_ordered`). Guest groups hold a count and a note, never guest names (US-36).
 - Tests never call Gemini: use `FakeImageGenerator` or a fake client. `GEMINI_API_KEY` lives only in `.env`.
 - Every admin route has `@admin_required`. Every POST form includes `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">` (Flask-WTF `CSRFProtect`). State changes are POST, never GET.
 - A new kind of data needs a domain class, an interface in `repositories.py`, and both a Neo4j and an in-memory implementation. Check both with one shared contract test (see `tests/test_memory_repos.py`).

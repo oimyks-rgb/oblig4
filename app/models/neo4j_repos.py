@@ -4,15 +4,36 @@ Graph model (see docs/models/graph-model.md):
   (:FoodItem)-[:CONTAINS]->(:Allergen {code})
   (:FoodItem)-[:SUITS]->(:EventCategory {code})
   (:User {id, email, name, passwordHash, role})
+  (:User)-[:PLACED]->(:Order)-[:INCLUDES {quantity, unitPriceNok, name, position}]->(:FoodItem)
+  (:Order)-[:HAS_GUEST_GROUP]->(:GuestGroup {guestCount, note, position})
 """
 
 from typing import Optional
 
 from neo4j import Driver
+from neo4j.exceptions import ConstraintError
 
-from .domain import Allergen, DietaryLabel, EventCategory, FoodItem, Role, User
+from .domain import (
+    Allergen,
+    DietaryLabel,
+    EventCategory,
+    FoodItem,
+    GuestGroup,
+    Order,
+    OrderLine,
+    OrderStatus,
+    PaymentStatus,
+    Role,
+    User,
+)
 from .images import ImageStore
-from .repositories import FoodItemRepository, Repositories, UserRepository
+from .repositories import (
+    DuplicateReference,
+    FoodItemRepository,
+    OrderRepository,
+    Repositories,
+    UserRepository,
+)
 
 _FOOD_ITEM_RETURN = """
 OPTIONAL MATCH (f)-[:CONTAINS]->(a:Allergen)
@@ -129,6 +150,12 @@ class Neo4jFoodItemRepository(FoodItemRepository):
         )
         return bool(records) and records[0]["deleted"] > 0
 
+    def is_ordered(self, item_id):
+        records, _, _ = self._driver.execute_query(
+            "RETURN EXISTS { (:Order)-[:INCLUDES]->(:FoodItem {id: $id}) } AS ordered", id=item_id
+        )
+        return records[0]["ordered"]
+
 
 def _to_user(record) -> User:
     u = record["u"]
@@ -174,7 +201,145 @@ class Neo4jUserRepository(UserRepository):
         return self.get(user.id)
 
 
+_ORDER_RETURN = """
+CALL (o) {
+  OPTIONAL MATCH (o)-[i:INCLUDES]->(f:FoodItem)
+  WITH i, f ORDER BY i.position
+  RETURN collect(i {.name, .unitPriceNok, .quantity, foodItemId: f.id}) AS lines
+}
+CALL (o) {
+  OPTIONAL MATCH (o)-[:HAS_GUEST_GROUP]->(g:GuestGroup)
+  WITH g ORDER BY g.position
+  RETURN collect(g {.guestCount, .note}) AS groups
+}
+RETURN o, customerId, lines, groups
+ORDER BY o.createdAt DESC
+"""
+
+
+def _native(value):
+    """neo4j.time values -> Python date/datetime."""
+    return value.to_native() if hasattr(value, "to_native") else value
+
+
+def _to_order(record) -> Order:
+    o = record["o"]
+    return Order(
+        id=o["id"],
+        reference=o["reference"],
+        customer_id=record["customerId"],
+        created_at=_native(o["createdAt"]),
+        event_date=_native(o["eventDate"]),
+        guest_count=o["guestCount"],
+        delivery_street=o["deliveryStreet"],
+        delivery_postcode=o["deliveryPostcode"],
+        delivery_city=o["deliveryCity"],
+        lines=[
+            OrderLine(line["foodItemId"], line["name"], line["unitPriceNok"], line["quantity"])
+            for line in record["lines"]
+        ],
+        guest_groups=[GuestGroup(g["guestCount"], g["note"]) for g in record["groups"]],
+        event_category=EventCategory(o["eventCategory"]) if o.get("eventCategory") else None,
+        phone=o.get("phone", ""),
+        comment=o.get("comment", ""),
+        status=OrderStatus(o["status"]),
+        payment_status=PaymentStatus(o["paymentStatus"]),
+    )
+
+
+class Neo4jOrderRepository(OrderRepository):
+    def __init__(self, driver: Driver):
+        self._driver = driver
+
+    def add(self, order):
+        taken, _, _ = self._driver.execute_query(
+            "MATCH (o:Order {reference: $reference}) RETURN count(o) > 0 AS taken",
+            reference=order.reference,
+        )
+        if taken[0]["taken"]:
+            raise DuplicateReference(order.reference)
+        try:
+            records, _, _ = self._driver.execute_query(
+                """
+                MATCH (u:User {id: $customer_id})
+                CREATE (u)-[:PLACED]->(o:Order)
+                SET o = $props
+                FOREACH (g IN $groups |
+                  CREATE (o)-[:HAS_GUEST_GROUP]->(:GuestGroup {
+                    guestCount: g.guestCount, note: g.note, position: g.position}))
+                WITH o
+                CALL (o) {
+                  UNWIND $lines AS line
+                  MATCH (f:FoodItem {id: line.foodItemId})
+                  CREATE (o)-[:INCLUDES {quantity: line.quantity, unitPriceNok: line.unitPriceNok,
+                                         name: line.name, position: line.position}]->(f)
+                }
+                RETURN o.id AS id
+                """,
+                customer_id=order.customer_id,
+                props={
+                    "id": order.id,
+                    "reference": order.reference,
+                    "createdAt": order.created_at,
+                    "eventDate": order.event_date,
+                    "eventCategory": order.event_category.value if order.event_category else None,
+                    "guestCount": order.guest_count,
+                    "deliveryStreet": order.delivery_street,
+                    "deliveryPostcode": order.delivery_postcode,
+                    "deliveryCity": order.delivery_city,
+                    "phone": order.phone,
+                    "comment": order.comment,
+                    "status": order.status.value,
+                    "paymentStatus": order.payment_status.value,
+                },
+                groups=[
+                    {"guestCount": g.guest_count, "note": g.note, "position": n}
+                    for n, g in enumerate(order.guest_groups)
+                ],
+                lines=[
+                    {
+                        "foodItemId": line.food_item_id,
+                        "name": line.name,
+                        "unitPriceNok": line.unit_price_nok,
+                        "quantity": line.quantity,
+                        "position": n,
+                    }
+                    for n, line in enumerate(order.lines)
+                ],
+            )
+        except ConstraintError as error:
+            raise DuplicateReference(order.reference) from error
+        if not records:
+            raise KeyError(f"Customer {order.customer_id} does not exist")
+        return self.get(order.id)
+
+    def _query(self, where: str, **params) -> list[Order]:
+        records, _, _ = self._driver.execute_query(
+            "MATCH (u:User)-[:PLACED]->(o:Order) " + where + " WITH o, u.id AS customerId " + _ORDER_RETURN,
+            **params,
+        )
+        return [_to_order(r) for r in records]
+
+    def get(self, order_id):
+        orders = self._query("WHERE o.id = $id", id=order_id)
+        return orders[0] if orders else None
+
+    def list_for_customer(self, customer_id):
+        return self._query("WHERE u.id = $customer_id", customer_id=customer_id)
+
+    def list(self, status=None, event_date=None):
+        return self._query(
+            "WHERE ($status IS NULL OR o.status = $status) "
+            "AND ($event_date IS NULL OR o.eventDate = $event_date)",
+            status=status.value if status else None,
+            event_date=event_date,
+        )
+
+
 def neo4j_repositories(driver: Driver, images: ImageStore) -> Repositories:
     return Repositories(
-        food_items=Neo4jFoodItemRepository(driver), users=Neo4jUserRepository(driver), images=images
+        food_items=Neo4jFoodItemRepository(driver),
+        users=Neo4jUserRepository(driver),
+        images=images,
+        orders=Neo4jOrderRepository(driver),
     )

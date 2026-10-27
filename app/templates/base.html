@@ -11,6 +11,7 @@
     <a class="brand" href="{{ url_for('shop.index') }}">Ekte Mat</a>
     <nav>
       <a href="{{ url_for('shop.index') }}">Menu</a>
+      <a href="{{ url_for('shop.cart') }}">Cart{% if cart_portions %} ({{ cart_portions }}){% endif %}</a>
       {% if current_user %}
         <a href="{{ url_for('account.index') }}">My orders</a>
         {% if current_user.is_admin %}<a href="{{ url_for('admin.index') }}">Admin</a>{% endif %}
@@ -20,6 +21,7 @@
         </form>
       {% else %}
         <a href="{{ url_for('account.login') }}">Log in</a>
+        <a href="{{ url_for('account.register') }}">Register</a>
       {% endif %}
     </nav>
   </header>

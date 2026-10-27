@@ -5,6 +5,7 @@ Plain dataclasses and enums with no knowledge of storage. Repositories
 """
 
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 
@@ -78,12 +79,20 @@ class OrderStatus(str, Enum):
     REJECTED = "rejected"
     CANCELLED = "cancelled"
 
+    @property
+    def label(self) -> str:
+        return self.value.replace("_", " ").capitalize()
+
 
 class PaymentStatus(str, Enum):
     NOT_PAID = "not_paid"
     DEPOSIT_PAID = "deposit_paid"
     INVOICED = "invoiced"
     PAID = "paid"
+
+    @property
+    def label(self) -> str:
+        return self.value.replace("_", " ").capitalize()
 
 
 class Role(str, Enum):
@@ -118,3 +127,55 @@ class User:
     @property
     def is_admin(self) -> bool:
         return self.role == Role.ADMIN
+
+
+@dataclass
+class OrderLine:
+    """One food item in an order. Name and price are copied when the order is placed,
+    so later menu changes do not alter old orders."""
+
+    food_item_id: str
+    name: str
+    unit_price_nok: int
+    quantity: int
+
+    @property
+    def line_total(self) -> int:
+        return self.unit_price_nok * self.quantity
+
+
+@dataclass
+class GuestGroup:
+    """Allergies or diets for a number of guests, e.g. 2 guests: nut allergy.
+    Deliberately no guest names (US-36, GDPR art. 9)."""
+
+    guest_count: int
+    note: str
+
+
+@dataclass
+class Order:
+    id: str
+    reference: str  # shown to customers, e.g. EM-7K3QX9
+    customer_id: str
+    created_at: datetime
+    event_date: date
+    guest_count: int
+    delivery_street: str
+    delivery_postcode: str
+    delivery_city: str
+    lines: list[OrderLine] = field(default_factory=list)
+    guest_groups: list[GuestGroup] = field(default_factory=list)
+    event_category: Optional[EventCategory] = None
+    phone: str = ""
+    comment: str = ""
+    status: OrderStatus = OrderStatus.SUBMITTED
+    payment_status: PaymentStatus = PaymentStatus.NOT_PAID
+
+    @property
+    def total_nok(self) -> int:
+        return sum(line.line_total for line in self.lines)
+
+    @property
+    def delivery_address(self) -> str:
+        return f"{self.delivery_street}, {self.delivery_postcode} {self.delivery_city}"

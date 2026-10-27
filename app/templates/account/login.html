@@ -13,4 +13,5 @@
   </label>
   <button class="button" type="submit">Log in</button>
 </form>
+<p>New customer? <a href="{{ url_for('account.register', next=next) if next else url_for('account.register') }}">Create an account</a></p>
 {% endblock %}
